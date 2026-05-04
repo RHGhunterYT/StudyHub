@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyHub v4</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" id="theme-color-meta" content="#0f172a">
+<link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2338bdf8'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='white'>🎮</text></svg>">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--accent:#38bdf8}
+  body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .game-card{transition:transform .2s,box-shadow .2s}
+  .game-card:hover{transform:translateY(-4px);box-shadow:0 10px 30px -10px color-mix(in srgb,var(--accent) 30%,transparent)}
+  .tab.active{background:var(--accent);color:#000}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--card);border-radius:4px}
+  canvas{touch-action:none}
+</style>
+</head>
+<body class="min-h-screen">
+<!-- CONFIG v3 KEEP AT TOP -->
+<script id="game-config" type="application/json">
+{
+  "siteTitle": "StudyHub v4",
+  "classroomTitle": "Home - Google Classroom",
+  "games": [
+    {"id":"snake","name":"Snake","description":"Eat, grow, don't hit yourself","category":"Arcade", "src": "games/snake/index.html"},
+    {"id":"2048","name":"2048","description":"Join tiles to reach 2048","category":"Puzzle", "src":"games/2048/index.html"},
+    {"id":"tetris","name":"Tetris","description":"Classic block stacking","category":"Puzzle"},
+    {"id":"pong","name":"Pong","description":"Beat the AI","category":"Arcade"},
+    {"id":"breakout","name":"Breakout","description":"Break all bricks","category":"Arcade", "src": "games/breakout/index.html"},
+    {"id":"flappy","name":"Flappy","description":"Fly through pipes","category":"Arcade", "src": "games/flappy/index.html"},
+    {"id":"dodge","name":"Dodge","description":"Avoid the falling blocks","category":"Action"},
+    {"id": "rich", "name": "Idle Rich Business", "description": "Hustle, buy businesses, Become the richest.", "category": "idle", "src": "games/rich/index.html"},
+    {"id": "hacker", "name": "Idle Hacker", "description": "Mine bytes, hack everything, take over the world.", "category": "idle", "src": "games/hacker/index.html"},
+    {"id": "survivor", "name": "Survivor", "description": "Survive endless hoards, get upgrades, and get the heighest score.", "category": "Arcade", "src": "games/survivor/index.html"}
+  ],
+  "themes": {
+    "presets": [
+      {"name":"Dark","bg":"#0f172a","card":"#1e293b","text":"#e2e8f0","accent":"#38bdf8"},
+      {"name":"Light","bg":"#f1f5f9","card":"#ffffff","text":"#0f172a","accent":"#0ea5e9"},
+      {"name":"Midnight","bg":"#020617","card":"#0f172a","text":"#cbd5e1","accent":"#a855f7"},
+      {"name":"Forest","bg":"#052e16","card":"#14532d","text":"#dcfce7","accent":"#22c55e"}
+    ]
+  }
+}
+</script>
+
+<div id="toast-container" class="fixed bottom-4 right-4 z-[100] space-y-2"></div>
+
+<header class="sticky top-0 z-40 backdrop-blur-lg border-b" style="background:color-mix(in srgb,var(--bg) 85%,transparent);border-color:color-mix(in srgb,var(--text) 10%,transparent)">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold" style="background:var(--accent);color:#000">🎮</div>
+    <h1 id="site-title" class="text-xl font-bold tracking-tight">StudyHub</h1>
+    <div class="flex-1 hidden sm:flex justify-center">
+      <div class="relative w-full max-w-xl">
+        <input id="search" placeholder="Search games... ( / )" class="w-full px-4 py-2.5 rounded-2xl outline-none" style="background:var(--card);border:1px solid color-mix(in srgb,var(--text) 12%,transparent)">
+        <span class="absolute right-3 top-2.5 opacity-50 text-sm">⌘K</span>
+      </div>
+    <button id="random-btn" class="px-3 py-2 rounded-xl hover:opacity-80" style="background:var(--card)" title="Random Game (R)">🎲</button>
+    <button id="settings-btn" class="px-3 py-2 rounded-xl hover:opacity-80" style="background:var(--card)" title="Settings">⚙️</button>
+  </div>
+  <div class="sm:hidden px-4 pb-3">
+    <input id="search-m" placeholder="Search..." class="w-full px-4 py-2.5 rounded-2xl outline-none" style="background:var(--card)">
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <div class="flex items-center gap-2 mb-5 overflow-x-auto">
+    <button data-tab="all" class="tab active px-4 py-2 rounded-xl whitespace-nowrap" style="background:var(--card)">All Games</button>
+    <button data-tab="fav" class="tab px-4 py-2 rounded-xl whitespace-nowrap" style="background:var(--card)">Favorites ⭐</button>
+    <button data-tab="recent" class="tab px-4 py-2 rounded-xl whitespace-nowrap" style="background:var(--card)">Recent 🕒</button>
+    <div class="ml-auto text-xs opacity-60 hidden md:block">C: Classroom • B: Blank • R: Random • T: Thumbnail</div>
+  </div>
+  <div id="game-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+  <div id="empty-state" class="hidden text-center py-20 opacity-60">No games found</div>
+</main>
+
+<!-- Game Modal -->
+<div id="game-modal" class="hidden fixed inset-0 z-50" style="background:color-mix(in srgb,var(--bg) 95%,black)">
+  <div class="flex flex-col h-full">
+    <div class="flex items-center gap-3 p-3 border-b" style="border-color:color-mix(in srgb,var(--text) 10%,transparent);background:var(--card)">
+      <button id="close-game" class="px-3 py-1.5 rounded-lg" style="background:var(--bg)">✕</button>
+      <h2 id="game-title" class="font-semibold text-lg flex-1"></h2>
+      <button id="copy-link" class="px-3 py-1.5 rounded-lg text-sm" style="background:var(--accent);color:#000">Copy Share Link</button>
+      <div class="text-xs opacity-60 hidden sm:block">Press T to capture thumbnail</div>
+    </div>
+    <div class="flex-1 flex items-center justify-center p-2 md:p-6 overflow-auto">
+      <canvas id="game-canvas" width="800" height="600" class="max-w-full max-h-full rounded-2xl shadow-2xl" style="background:#000"></canvas>
+      <iframe id="game-iframe" class="hidden w-full h-full max-w-[1200px] max-h-full rounded-2xl shadow-2xl bg-black border-0" allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div id="settings-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.7)">
+  <div class="w-full max-w-2xl rounded-3xl p-6 max-h-[90vh] overflow-auto" style="background:var(--card)">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-2xl font-bold">Settings</h3>
+      <button id="close-settings" class="px-3 py-1 rounded-lg" style="background:var(--bg)">✕</button>
+    </div>
+    
+    <div class="space-y-6">
+      <div>
+        <h4 class="font-semibold mb-2">Theme</h4>
+        <div id="theme-presets" class="flex flex-wrap gap-2 mb-3"></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <label class="text-xs">Background<input id="th-bg" type="color" class="w-full h-10 rounded cursor-pointer"></label>
+          <label class="text-xs">Card<input id="th-card" type="color" class="w-full h-10 rounded cursor-pointer"></label>
+          <label class="text-xs">Text<input id="th-text" type="color" class="w-full h-10 rounded cursor-pointer"></label>
+          <label class="text-xs">Accent<input id="th-accent" type="color" class="w-full h-10 rounded cursor-pointer"></label>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-semibold mb-2">Privacy & Cloaking</h4>
+        <div class="space-y-2">
+          <label class="flex items-center gap-3 p-3 rounded-xl cursor-pointer" style="background:var(--bg)">
+            <input id="classroomMode" type="checkbox" class="w-5 h-5">
+            <div><div class="font-medium">Classroom Mode (C)</div><div class="text-xs opacity-70">Title & icon disguised as Google Classroom</div></div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-xl cursor-pointer" style="background:var(--bg)">
+            <input id="autoCloak" type="checkbox" class="w-5 h-5">
+            <div><div class="font-medium">Auto-cloak when tab hidden</div><div class="text-xs opacity-70">Automatically changes title when you switch tabs</div></div>
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-semibold mb-2">App</h4>
+        <div class="flex flex-wrap gap-2">
+          <button id="install-btn" class="hidden px-4 py-2 rounded-xl" style="background:var(--accent);color:#000">📲 Install App</button>
+          <button id="blank-cloak" class="px-4 py-2 rounded-xl" style="background:var(--bg)">Open in about:blank (B)</button>
+          <button id="export-btn" class="px-4 py-2 rounded-xl" style="background:var(--bg)">Export Data</button>
+          <button id="import-btn" class="px-4 py-2 rounded-xl" style="background:var(--bg)">Import Data</button>
+          <input type="file" id="import-file" accept="application/json" hidden>
+        </div>
+      </div>
+
+      <div class="text-xs opacity-60">
+        <p>v4 • Single-file • All data saved locally</p>
+        <p>NEW: Auto-cloak • URL obfuscator (?g=) • PWA install</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const CONFIG = JSON.parse(document.getElementById('game-config').textContent);
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+
+  // === STATE ===
+  let favorites = JSON.parse(localStorage.getItem('favorites')||'[]');
+  let recents = JSON.parse(localStorage.getItem('recents')||'[]');
+  let playCounts = JSON.parse(localStorage.getItem('playCounts')||'{}');
+  let thumbnails = JSON.parse(localStorage.getItem('thumbnails')||'{}');
+  let theme = JSON.parse(localStorage.getItem('theme')||'null') || CONFIG.themes.presets[0];
+  let classroomMode = localStorage.getItem('classroomMode')==='true';
+  let autoCloak = localStorage.getItem('autoCloak')==='true';
+  let currentTab = 'all';
+  let gameActive = false, currentGameId = null, animId = null, cleanupGame = null;
+  let tabCloaked = false;
+  let deferredPrompt = null;
+  const defaultFavicon = $('#favicon').href;
+  const classroomFavicon = 'https://ssl.gstatic.com/classroom/favicon.png';
+
+  // === UTILS ===
+  function showToast(msg, ms=2000){
+    const el = document.createElement('div');
+    el.className = 'px-4 py-2 rounded-xl shadow-lg text-sm transform transition-all';
+    el.style.background='var(--card)'; el.style.border='1px solid color-mix(in srgb, var(--accent) 30%, transparent)';
+    el.textContent = msg;
+    $('#toast-container').appendChild(el);
+    setTimeout(()=>el.style.opacity='0', ms-300);
+    setTimeout(()=>el.remove(), ms);
+  }
+  function setFavicon(url){ $('#favicon').href = url; }
+  function updateDocumentIdentity(){
+    // NEW FEATURE 1: Tab Cloaker respects hierarchy: auto-cloak > classroom > normal
+    if(tabCloaked){
+      document.title = 'Google Classroom';
+      setFavicon(classroomFavicon);
+    } else if(classroomMode){
+      document.title = CONFIG.classroomTitle;
+      setFavicon(classroomFavicon);
+    } else {
+      document.title = CONFIG.siteTitle;
+      setFavicon(defaultFavicon);
+    }
+  }
+  function applyTheme(){
+    document.documentElement.style.setProperty('--bg', theme.bg);
+    document.documentElement.style.setProperty('--card', theme.card);
+    document.documentElement.style.setProperty('--text', theme.text);
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    $('#theme-color-meta').setAttribute('content', theme.accent);
+    $('#th-bg').value = theme.bg; $('#th-card').value = theme.card; 
+    $('#th-text').value = theme.text; $('#th-accent').value = theme.accent;
+    localStorage.setItem('theme', JSON.stringify(theme));
+    setupPWA(); // regenerate manifest with new colors
+  }
+  function saveCounts(){ localStorage.setItem('playCounts', JSON.stringify(playCounts)); }
+
+  // === RENDER GAMES ===
+  function gameCard(g){
+    const plays = playCounts[g.id]||0;
+    const isFav = favorites.includes(g.id);
+    const thumb = thumbnails[g.id] || `https://picsum.photos/seed/${g.id}/600/400`;
+    return `<div class="game-card group cursor-pointer rounded-2xl p-3" data-id="${g.id}" style="background:var(--card)">
+      <div class="relative aspect-video rounded-xl overflow-hidden bg-black/30">
+        <img data-game-id="${g.id}" src="${thumb}" class="w-full h-full object-cover transition group-hover:scale-105" alt="">
+        <button class="fav-btn absolute top-2 right-2 w-8 h-8 rounded-lg backdrop-blur flex items-center justify-center" style="background:rgba(0,0,0,.5)" data-id="${g.id}">${isFav?'★':'☆'}</button>
+        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition" style="background:rgba(0,0,0,.5)"><span class="px-4 py-2 rounded-xl font-semibold" style="background:var(--accent);color:#000">▶ Play</span></div>
+      </div>
+      <div class="mt-3 flex items-start justify-between gap-2">
+        <div><h3 class="font-semibold leading-tight">${g.name}</h3><p class="text-xs opacity-70">${g.description}</p></div>
+        <span class="text-[10px] px-2 py-1 rounded-md" style="background:var(--bg)">${plays}</span>
+      </div>
+    </div>`;
+  }
+  function renderGames(filter=''){
+    const grid = $('#game-grid');
+    let list = CONFIG.games;
+    if(currentTab==='fav') list = list.filter(g=>favorites.includes(g.id));
+    if(currentTab==='recent') list = recents.map(id=>CONFIG.games.find(g=>g.id===id)).filter(Boolean);
+    if(filter) list = list.filter(g=>g.name.toLowerCase().includes(filter) || g.description.toLowerCase().includes(filter));
+    grid.innerHTML = list.map(gameCard).join('');
+    $('#empty-state').classList.toggle('hidden', list.length>0);
+    $$('.game-card').forEach(c=>c.onclick=()=>launchGame(c.dataset.id));
+    $$('.fav-btn').forEach(b=>b.onclick=e=>{e.stopPropagation(); toggleFav(b.dataset.id)});
+  }
+  function toggleFav(id){
+    favorites = favorites.includes(id) ? favorites.filter(f=>f!==id) : [id,...favorites];
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+    renderGames($('#search').value.toLowerCase());
+    showToast(favorites.includes(id)?'Added to favorites':'Removed');
+  }
+
+  // === GAME LAUNCHER ===
+  function launchGame(id){
+    const g = CONFIG.games.find(x=>x.id===id); if(!g) return;
+    currentGameId = id; gameActive = true;
+    $('#game-title').textContent = g.name;
+    $('#game-modal').classList.remove('hidden');
+    playCounts[id]=(playCounts[id]||0)+1; saveCounts();
+    recents = [id, ...recents.filter(r=>r!==id)].slice(0,12);
+    localStorage.setItem('recents', JSON.stringify(recents));
+    
+    // NEW FEATURE 2: URL Obfuscator - use base64
+    const obfuscated = btoa(id);
+    history.replaceState(null,'','?g='+obfuscated);
+    
+    // Handle external HTML games
+    if(g.src){
+      $('#game-canvas').classList.add('hidden');
+      $('#game-iframe').classList.remove('hidden');
+      $('#game-iframe').src = g.src;
+    } else {
+      $('#game-iframe').classList.add('hidden');
+      $('#game-iframe').src = 'about:blank';
+      $('#game-canvas').classList.remove('hidden');
+      startGame(id);
+    }
+    showToast(`Playing ${g.name}`);
+  }
+  function closeGame(){
+    $('#game-modal').classList.add('hidden');
+    gameActive=false;
+    if(animId) cancelAnimationFrame(animId);
+    if(cleanupGame) cleanupGame();
+    $('#game-iframe').src = 'about:blank';
+    history.replaceState(null,'','./');
+  }
+  $('#close-game').onclick = closeGame;
+  $('#copy-link').onclick = ()=>{
+    // NEW FEATURE 2: Copy obfuscated link
+    const link = location.origin + location.pathname + '?g=' + btoa(currentGameId);
+    navigator.clipboard.writeText(link).then(()=>showToast('Obfuscated link copied'));
+  };
+
+  // === 6 BUILT-IN CANVAS GAMES ===
+  function startGame(id){
+    const canvas = $('#game-canvas'), ctx = canvas.getContext('2d');
+    const W=canvas.width, H=canvas.height;
+    if(cleanupGame) cleanupGame();
+    let keys={}; const onKey=(e)=>keys[e.key.toLowerCase()]=e.type==='keydown';
+    window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey);
+    cleanupGame = ()=>{window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKey);};
+
+    if(id==='snake'){
+      let snake=[{x:10,y:10}], dir={x:0,y:-1}, food={x:5,y:5}, size=20, score=0, tick=0;
+      function loop(){
+        if(!gameActive) return;
+        tick++; if(tick%8===0){
+          const head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+          if(head.x<0)head.x=39;if(head.x>39)head.x=0;if(head.y<0)head.y=29;if(head.y>29)head.y=0;
+          if(snake.some(s=>s.x===head.x&&s.y===head.y)){snake=[{x:10,y:10}];dir={x:0,y:-1};score=0;}
+          snake.unshift(head);
+          if(head.x===food.x&&head.y===food.y){score++;food={x:Math.floor(Math.random()*40),y:Math.floor(Math.random()*30)}}else snake.pop();
+        }
+        if(keys.arrowup&&dir.y!==1)dir={x:0,y:-1};if(keys.arrowdown&&dir.y!==-1)dir={x:0,y:1};
+        if(keys.arrowleft&&dir.x!==1)dir={x:-1,y:0};if(keys.arrowright&&dir.x!==-1)dir={x:1,y:0};
+        ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+        ctx.fillStyle=theme.accent; snake.forEach(s=>ctx.fillRect(s.x*size,s.y*size,size-2,size-2));
+        ctx.fillStyle='#22c55e'; ctx.fillRect(food.x*size,food.y*size,size-2,size-2);
+        ctx.fillStyle='#fff'; ctx.font='20px monospace'; ctx.fillText('Score: '+score,10,25);
+        animId=requestAnimationFrame(loop);
+      } loop();
+    }
+    else if(id==='tetris'){
+      const cols=10, rows=20, sz=28, ox=260, oy=20;
+      let board=Array(rows).fill().map(()=>Array(cols).fill(0)), piece=null, score=0, drop=0;
+      const shapes=[[[1,1,1,1]],[[1,1],[1,1]],[[1,1,1],[0,1,0]],[[1,1,1],[1,0,0]],[[1,1,1],[0,0,1]],[[1,1,0],[0,1,1]],[[0,1,1],[1,1,0]]];
+      const colors=['#000','#38bdf8','#facc15','#a855f7','#f97316','#0ea5e9','#22c55e','#ef4444'];
+      function newPiece(){ const s=shapes[Math.floor(Math.random()*shapes.length)]; piece={x:3,y:0,shape:s,c:Math.floor(Math.random()*6)+1}; }
+      function collide(px,py,sh){ for(let y=0;y<sh.length;y++)for(let x=0;x<sh[y].length;x++)if(sh[y][x]){const nx=px+x,ny=py+y; if(nx<0||nx>=cols||ny>=rows||(ny>=0&&board[ny][nx]))return true;} return false;}
+      function merge(){ piece.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v&&piece.y+y>=0)board[piece.y+y][piece.x+x]=piece.c;})); for(let y=rows-1;y>=0;y--)if(board[y].every(c=>c)){board.splice(y,1);board.unshift(Array(cols).fill(0));score+=100;y++;} newPiece(); if(collide(piece.x,piece.y,piece.shape)){board=Array(rows).fill().map(()=>Array(cols).fill(0));score=0;} }
+      function rotate(){ const r=piece.shape[0].map((_,i)=>piece.shape.map(row=>row[i]).reverse()); if(!collide(piece.x,piece.y,r)) piece.shape=r; }
+      newPiece();
+      function loop(){
+        if(!gameActive)return; drop++; if(drop>30){drop=0; if(!collide(piece.x,piece.y+1,piece.shape)) piece.y++; else merge(); }
+        if(keys.arrowleft && !collide(piece.x-1,piece.y,piece.shape)){piece.x--;keys.arrowleft=false;}
+        if(keys.arrowright && !collide(piece.x+1,piece.y,piece.shape)){piece.x++;keys.arrowright=false;}
+        if(keys.arrowdown && !collide(piece.x,piece.y+1,piece.shape)){piece.y++;keys.arrowdown=false;}
+        if(keys.arrowup){rotate();keys.arrowup=false;}
+        ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='#111';ctx.fillRect(ox-2,oy-2,cols*sz+4,rows*sz+4);
+        board.forEach((row,y)=>row.forEach((c,x)=>{if(c){ctx.fillStyle=colors[c];ctx.fillRect(ox+x*sz,oy+y*sz,sz-1,sz-1)}}));
+        piece.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v){ctx.fillStyle=colors[piece.c];ctx.fillRect(ox+(piece.x+x)*sz,oy+(piece.y+y)*sz,sz-1,sz-1)}}));
+        ctx.fillStyle='#fff';ctx.font='24px monospace';ctx.fillText('Score: '+score,20,40);
+        animId=requestAnimationFrame(loop);
+      } loop();
+    }
+    else if(id==='pong'){
+      let py=H/2-40, ay=H/2-40, bx=W/2, by=H/2, vx=5, vy=3, ps=0, as=0;
+      canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect(); py=(e.clientY-r.top)*(H/r.height)-40;};
+      function loop(){
+        if(!gameActive)return; bx+=vx; by+=vy; if(by<0||by>H-10)vy*=-1; ay+=(bx> W/2 ? (by-ay-40)*0.07 : 0);
+        if(bx<20 && by>py && by<py+80){vx*=-1;bx=20;} if(bx>W-30 && by>ay && by<ay+80){vx*=-1;bx=W-30;}
+        if(bx<0){as++;bx=W/2;by=H/2} if(bx>W){ps++;bx=W/2;by=H/2}
+        ctx.fillStyle='#000';ctx.fillRect(0,0,W,H); ctx.fillStyle=theme.accent; ctx.fillRect(10,py,10,80); ctx.fillRect(W-20,ay,10,80); ctx.fillRect(bx,by,10,10);
+        ctx.fillStyle='#fff';ctx.font='30px monospace';ctx.fillText(ps, W/4,50);ctx.fillText(as, W*3/4,50);
+        ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.strokeStyle='#333';ctx.stroke();ctx.setLineDash([]);
+        animId=requestAnimationFrame(loop);
+      } loop();
+    }
+    else if(id==='breakout'){
+      let px=W/2-50, bx=W/2, by=H-100, vx=4, vy=-4, bricks=[], score=0;
+      for(let y=0;y<5;y++)for(let x=0;x<10;x++)bricks.push({x:80+x*66,y:60+y*28,w:60,h:20,hp:1});
+      canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect(); px=(e.clientX-r.left)*(W/r.width)-50;};
+      function loop(){
+        if(!gameActive)return; bx+=vx; by+=vy; if(bx<0||bx>W-10)vx*=-1; if(by<0)vy*=-1; if(by>H){bx=W/2;by=H-100;vx=4;vy=-4;score=0;bricks.forEach(b=>b.hp=1);}
+        if(by>H-110 && bx>px && bx<px+100){vy=-Math.abs(vy);vx=(bx-px-50)/12}
+        bricks.forEach(b=>{if(b.hp&&bx>b.x&&bx<b.x+b.w&&by>b.y&&by<b.y+b.h){b.hp=0;vy*=-1;score+=10}});
+        ctx.fillStyle='#000';ctx.fillRect(0,0,W,H); ctx.fillStyle=theme.accent; ctx.fillRect(px,H-80,100,12); ctx.beginPath();ctx.arc(bx,by,8,0,Math.PI*2);ctx.fill();
+        bricks.forEach(b=>{if(b.hp){ctx.fillStyle='#334155';ctx.fillRect(b.x,b.y,b.w,b.h)}});
+        ctx.fillStyle='#fff';ctx.font='20px monospace';ctx.fillText('Score: '+score,20,30);
+        animId=requestAnimationFrame(loop);
+      } loop();
+    }
+    else if(id==='flappy'){
+      let bird={y:H/2,v:0}, pipes=[], frame=0, score=0, dead=false;
+      function reset(){bird={y:H/2,v:0};pipes=[];score=0;dead=false;}
+      const flap=()=>{if(dead){reset()}else{bird.v=-8}}; window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();flap()}}); canvas.onclick=flap;
+      cleanupGame = ()=>{window.removeEventListener('keydown',flap); canvas.onclick=null; window.removeEventListener('keydown',onKey);window.removeEventListener('keyup',onKey)};
+      function loop(){
+        if(!gameActive)return; frame++; bird.v+=0.5; bird.y+=bird.v;
+        if(frame%110===0){const gap=150, top=Math.random()*(H-300)+50; pipes.push({x:W,h1:top,h2:H-top-gap})}
+        pipes.forEach(p=>p.x-=3); pipes=pipes.filter(p=>p.x>-60);
+        pipes.forEach(p=>{if(bird.y<30||bird.y>H-30||(80>p.x&&80<p.x+60&&(bird.y<p.h1||bird.y>p.h1+150)))dead=true; if(p.x===77)score++});
+        ctx.fillStyle='#0ea5e9';ctx.fillRect(0,0,W,H); ctx.fillStyle='#16a34a';ctx.fillRect(0,H-40,W,40);
+        ctx.fillStyle=theme.accent; ctx.beginPath();ctx.arc(80,bird.y,16,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#15803d'; pipes.forEach(p=>{ctx.fillRect(p.x,0,60,p.h1);ctx.fillRect(p.x,p.h1+150,60,H)});
+        ctx.fillStyle='#fff';ctx.font='bold 40px monospace';ctx.fillText(score,W/2-15,80); if(dead){ctx.fillText('SPACE',W/2-70,H/2)}
+        animId=requestAnimationFrame(loop);
+      } loop();
+    }
+    else if(id==='dodge'){
+      let px=W/2, blocks=[], t=0, score=0, alive=true;
+      function reset(){blocks=[];score=0;alive=true;px=W/2}
+      function loop(){
+        if(!gameActive)return; t++; if(t%20===0)blocks.push({x:Math.random()*(W-30),y:-30,w:30,h:30,v:3+Math.random()*3});
+        if(keys.arrowleft||keys.a)px-=7; if(keys.arrowright||keys.d)px+=7; px=Math.max(0,Math.min(W-40,px));
+        blocks.forEach(b=>b.y+=b.v); blocks=blocks.filter(b=>b.y<H+30);
+        if(alive){blocks.forEach(b=>{if(px<b.x+b.w&&px+40>b.x&&H-50<b.y+b.h&&H-10>b.y){alive=false}}); if(alive)score++;}
+        ctx.fillStyle='#000';ctx.fillRect(0,0,W,H); ctx.fillStyle=theme.accent; ctx.fillRect(px,H-50,40,12); ctx.fillStyle='#ef4444'; blocks.forEach(b=>ctx.fillRect(b.x,b.y,b.w,b.h));
+        ctx.fillStyle='#fff';ctx.font='22px monospace';ctx.fillText('Score: '+Math.floor(score/10),20,35); if(!alive){ctx.fillText('Press R to restart',W/2-110,H/2); if(keys.r)reset();}
+        animId=requestAnimationFrame(loop);
+      } loop();
+    }
+  }
+
+  // === THUMBNAIL CAPTURE (T) ===
+  function captureThumbnail(){
+    if(!gameActive) return;
+    const g = CONFIG.games.find(x=>x.id===currentGameId);
+    if(g && g.src){ showToast('Thumbnails only work for built-in games'); return; }
+    const data = $('#game-canvas').toDataURL('image/png');
+    thumbnails[currentGameId]=data;
+    localStorage.setItem('thumbnails', JSON.stringify(thumbnails));
+    const img = document.querySelector(`img[data-game-id="${currentGameId}"]`);
+    if(img) img.src = data;
+    showToast('Thumbnail saved (T)');
+  }
+
+  // === SETTINGS ===
+  function openSettings(){ $('#settings-modal').classList.remove('hidden'); }
+  function closeSettings(){ $('#settings-modal').classList.add('hidden'); }
+  $('#settings-btn').onclick=openSettings; $('#close-settings').onclick=closeSettings;
+  $('#classroomMode').checked=classroomMode;
+  $('#classroomMode').onchange=e=>{classroomMode=e.target.checked;localStorage.setItem('classroomMode',classroomMode);updateDocumentIdentity();showToast(classroomMode?'Classroom Mode ON':'Classroom Mode OFF')};
+  $('#autoCloak').checked=autoCloak;
+  $('#autoCloak').onchange=e=>{autoCloak=e.target.checked;localStorage.setItem('autoCloak',autoCloak);showToast(autoCloak?'Auto-cloak enabled':'Auto-cloak disabled')};
+  $('#blank-cloak').onclick=()=>{
+    const w=window.open('about:blank','_blank'); if(w){w.document.write(`<!doctype html><title>Classroom</title><link rel="icon" href="${classroomFavicon}"><iframe src="${location.href}" style="border:0;width:100vw;height:100vh"></iframe>`);w.document.close();showToast('Opened in about:blank')}
+  };
+  $('#export-btn').onclick=()=>{const data={favorites,recents,playCounts,thumbnails,theme,classroomMode,autoCloak}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='studyhub-v4-backup.json';a.click();showToast('Data exported')};
+  $('#import-btn').onclick=()=>$('#import-file').click();
+  $('#import-file').onchange=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{try{const d=JSON.parse(r.result); Object.entries(d).forEach(([k,v])=>localStorage.setItem(k,typeof v==='string'?v:JSON.stringify(v))); location.reload()}catch{showToast('Invalid file')}}; r.readAsText(f)};
+
+  // Theme presets
+  function renderPresets(){ $('#theme-presets').innerHTML = CONFIG.themes.presets.map(p=>`<button class="px-3 py-1.5 rounded-lg text-sm" style="background:${p.card};border:2px solid ${p.accent};color:${p.text}" data-preset="${p.name}">${p.name}</button>`).join(''); $$('#theme-presets button').forEach(b=>b.onclick=()=>{theme=CONFIG.themes.presets.find(x=>x.name===b.dataset.preset);applyTheme();showToast('Theme applied')}); }
+  ['bg','card','text','accent'].forEach(k=>$('#th-'+k).oninput=e=>{theme[k]=e.target.value;applyTheme()});
+
+  // === EVENTS ===
+  $('#search').oninput=e=>{const v=e.target.value.toLowerCase();renderGames(v); if(v){history.replaceState(null,'','?s='+btoa(v))}else{history.replaceState(null,'','./')}};
+  $('#search-m').oninput=e=>{$('#search').value=e.target.value;$('#search').dispatchEvent(new Event('input'))};
+  $$('.tab').forEach(t=>t.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');currentTab=t.dataset.tab;renderGames($('#search').value.toLowerCase())});
+  $('#random-btn').onclick=()=>{const list=CONFIG.games; launchGame(list[Math.floor(Math.random()*list.length)].id)};
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e=>{
+    if(e.target.tagName==='INPUT') return;
+    const k=e.key.toLowerCase();
+    if(k==='/'){e.preventDefault();$('#search').focus()}
+    if(k==='c'){ $('#classroomMode').click() }
+    if(k==='b'){ $('#blank-cloak').click() }
+    if(k==='r' && !gameActive){ $('#random-btn').click() }
+    if(k==='t' && gameActive){ captureThumbnail() }
+    if(k==='escape'){closeGame();closeSettings()}
+  });
+
+  // === NEW FEATURE 1: AUTO-CLOAK ===
+  function handleVisibility(shouldCloak){
+    if(!autoCloak) return;
+    tabCloaked = shouldCloak;
+    updateDocumentIdentity();
+    if(shouldCloak) showToast('Tab cloaked');
+  }
+  document.addEventListener('visibilitychange', ()=> handleVisibility(document.hidden));
+  window.addEventListener('blur', ()=> handleVisibility(true));
+  window.addEventListener('focus', ()=> handleVisibility(false));
+
+  // === NEW FEATURE 2: URL OBFUSCATOR on load ===
+  function initFromURL(){
+    const params = new URLSearchParams(location.search);
+    let gameToLaunch = null;
+    if(params.has('g')){ try{ gameToLaunch = atob(params.get('g')) }catch{} }
+    else if(params.has('game')){ gameToLaunch = params.get('game') }
+    // Disabled auto-launch - user wants to click manually
+    // if(gameToLaunch && CONFIG.games.some(g=>g.id===gameToLaunch)){
+    //   setTimeout(()=>launchGame(gameToLaunch),300);
+    // }
+    let searchQuery = '';
+    if(params.has('s')){ try{ searchQuery = atob(params.get('s')) }catch{} }
+    else if(params.has('search')){ searchQuery = params.get('search') }
+    if(searchQuery){ $('#search').value=searchQuery; renderGames(searchQuery.toLowerCase()) }
+  }
+
+  // === NEW FEATURE 3: PWA INSTALL ===
+  function makeIcon(size){
+    const c=document.createElement('canvas');c.width=size;c.height=size;
+    const x=c.getContext('2d');
+    x.fillStyle=theme.accent; x.fillRect(0,0,size,size);
+    x.font=`${Math.floor(size*0.6)}px serif`; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText('🎮',size/2,size/2+size*0.05);
+    return c.toDataURL('image/png');
+  }
+  function setupPWA(){
+    // Create manifest dynamically
+    const manifest = {
+      name: "Study Tools",
+      short_name: "Study",
+      start_url: "./",
+      display: "standalone",
+      background_color: theme.bg,
+      theme_color: theme.accent,
+      icons: [
+        {src: makeIcon(192), sizes:"192x192", type:"image/png"},
+        {src: makeIcon(512), sizes:"512x512", type:"image/png"}
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+    let link = document.querySelector('link[rel="manifest"]');
+    if(!link){ link=document.createElement('link'); link.rel='manifest'; document.head.appendChild(link); }
+    link.href = URL.createObjectURL(blob);
+
+    // Register Service Worker via Blob for offline
+    if('serviceWorker' in navigator){
+      const pageURL = location.origin + location.pathname;
+      const swCode = `
+        const CACHE='studyhub-v4';
+        const PAGE='${pageURL}';
+        self.addEventListener('install', e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.add(PAGE).catch(()=>{}))); self.skipWaiting(); });
+        self.addEventListener('activate', e=>self.clients.claim());
+        self.addEventListener('fetch', e=>{ e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match(PAGE)))); });
+      `;
+      const swBlob = new Blob([swCode], {type:'text/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+    }
+  }
+  window.addEventListener('beforeinstallprompt', e=>{
+    e.preventDefault(); deferredPrompt=e;
+    $('#install-btn').classList.remove('hidden');
+  });
+  $('#install-btn').onclick=async()=>{
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const {outcome} = await deferredPrompt.userChoice;
+    showToast(outcome==='accepted'?'App installed':'Install canceled');
+    deferredPrompt=null; $('#install-btn').classList.add('hidden');
+  };
+
+  // === INIT ===
+  function init(){
+    $('#site-title').textContent = CONFIG.siteTitle.replace(' v4','');
+    renderPresets(); applyTheme(); updateDocumentIdentity(); renderGames();
+    initFromURL();
+    // Clean URL so refresh doesn't re-trigger
+    if(location.search.includes('g=') || location.search.includes('game=')){
+      history.replaceState(null,'','./');
+    }
+    setupPWA();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
