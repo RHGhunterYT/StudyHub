@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Hacker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+</head>
+
+<body style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">
+
+    <div id="boot-screen" onclick="initializeSystem()">
+        <div class="boot-content">
+            <h1>SYSTEM STANDBY</h1>
+            <p class="blink">[ CLICK ANYWHERE TO INITIALIZE ]</p>
+        </div>
+    </div>
+
+    <canvas id="matrix-canvas"></canvas>
+
+    <div class="game-container">
+        <main class="mining-section">
+            <h2 id="target-name">Target: Neighbor's Unsecured Wi-Fi</h2>
+            <div class="stats">
+                <h1 style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">Bytes: <span id="byte-count" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">0</span></h1>
+                <p style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">Bytes Per Click (BPC): <span id="bpc-count" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">1</span></p>
+                <p style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">Bytes Per Second (BPS): <span id="bps-count" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">0</span></p>
+                <p style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">Clicks Per Second (CPS): <span id="cps-count" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">0</span></p>
+                <p style="margin-top: 20px; color: #00ffff; -webkit-user-select: none; -ms-user-select: none; user-select: none;">Rebirth Points: <span id="rebirth-points">0</span></p>
+                <p style="font-weight: bold; color: #ff00ff;">Total Lifetime Rebirths: <span id="total-rebirths">0</span></p>
+                
+                <p style="font-weight: bold; color: #ff33ff;">Ultra Rebirths: <span id="ultra-rebirth-count">0</span></p>
+
+                <p style="color: #19a900; font-size: 0.9rem; margin-top: 15px;">System Uptime: <span id="uptime-display">0s</span></p>
+            </div>
+            
+            <button id="mine-btn" onclick="mineBytes()" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;">[ EXTRACT DATA ]</button>
+            <button id="rebirth-btn" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;" onclick="attemptRebirth()" disabled>Rebirth (Requires All Maxed)</button>
+            <button id="ultra-rebirth-btn" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;" onclick="attemptUltraRebirth()" disabled>BANNANA</button>
+            <button id="hard-reset-btn" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;" onclick="hardReset()">[ WIPE ALL SAVE DATA ]</button>
+
+            <button id="instructions-btn" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;" onclick="openInstructions()">[ HOW TO PLAY ]</button>
+
+            <button id="mute-btn" onclick="toggleMute()">[ MUTE AUDIO ]</button>
+
+            <button id="license-btn" style="-webkit-user-select: none; -ms-user-select: none; user-select: none;" onclick="showLicense()">> ./view_eula.sh</button>
+        </main>
+
+        <aside class="shop-section">
+            <h2 style="color: #00ffff; border-bottom: 1px solid #00ffff;">Quantum Rebirth Upgrades</h2>
+            <div id="rebirth-shop-container" style="margin-bottom: 30px;">
+            </div>
+
+            <h2>Black Market Upgrades</h2>
+            <div id="shop-container">
+            </div>
+        </aside>
+    </div> 
+
+    <div id="instructions-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 style="color: #00ff00;">SYSTEM MANUAL v1.0</h2>
+            <p><strong>1. MINE BYTES:</strong> Click the main button to generate Bytes manually. Use Bytes to buy normal
+                upgrades that increase your Bytes Per Second (BPS) and Bytes Per Click (BPC).</p>
+            <p><strong>2. REBIRTH:</strong> Once you reach the target Bytes, initiate a Rebirth. This wipes your current run
+                but grants Rebirth Points and increases your maximum upgrade capacity!</p>
+            <p><strong>3. REBIRTH UPGRADES:</strong> Spend Rebirth Points on powerful permanent multipliers. These do NOT
+                reset during a normal Rebirth.</p>
+            <p><strong>4. ULTRA REBIRTH:</strong> Max out absolutely every normal AND rebirth upgrade to unlock the Ultra
+                Rebirth. This resets EVERYTHING but shows that you've completed the entire game atleast once.</p>
+            <br>
+            <button id="close-instructions-btn" onclick="closeInstructions()" style="border-color: #ff0000; color: #ff0000;">[ CLOSE MANUAL ]</button>
+        </div>
+    </div>
+
+    <audio id="bg-music" loop>
+        <source src="GameMusic.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="script.js"></script>
+    
+    <button id="data-packet" onclick="claimDataPacket()">[ ⚠ SECURE CACHE DETECTED ]</button>
+    
+    <div id="studio-logo">© 2026 RHGhunter. All Rights Reserved.</div>
+    
+    <div id="license-modal"
+        style="display: none !important; position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.25); backdrop-filter: blur(10px); z-index: 20000; justify-content: center; align-items: center;">
+        <div class="license-content">
+            <h2 style="color: #39ff14; border-bottom: 1px solid #39ff14; padding-bottom: 10px;">END USER LICENSE AGREEMENT
+            </h2>
+            <div class="license-text">
+                <p><strong>1. ACCEPTANCE OF TERMS</strong><br>By accessign or interacting with the source code for this
+                    project, you agree to the term that follow.</p>
+                <p><strong>2. REDISTRIBUTION</strong><br>You may not clone, redistribute,republish,or sell this game, in
+                    whole or in part, under any circumstances.</p>
+                <p><strong>3. PERSONAL LEARNING</strong><br>You are welcome to view the source code to learn how the game
+                    was built.</p>
+                <p><strong>4. USING THE CODE</strong><br>You may not reuse, copy, or adapt the source code for your own
+                    projects without explicit written permission from the owner of this project.</p>
+                <p><strong>5. ATTRIBUTION</strong><br>If you are granted permission to use any portion of this code, you
+                    must prominently credit "RHGhunter" and link back to the original project.</p>
+                <br>
+                <p>To request permission to use snippets of this code, please contact: [rhghunterbusiness@gmail.com]</p>
+            </div>
+            <button id="license-close-btn" onclick="hideLicense()">[ CLOSE TERMINAL ]</button>
+        </div>
+    </div>
+    
+    <div id="ultra-reward-modal"
+        style="display: none !important; position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.95); z-index: 10000; justify-content: center; align-items: center; flex-direction: column; text-align: center;">
+        <h1 style="color: #ff33ff; font-family: monospace; text-shadow: 0 0 10px #ff33ff;">SYSTEM WIPED. SELECT YOUR
+            PROTOCOL.</h1>
+        <p style="color: white; margin-bottom: 40px;">Choose a permanent, stacking baseline upgrade for all future runs.</p>
+    
+        <div style="display: flex; gap: 20px;">
+            <button onclick="selectUltraReward(1)"
+                style="background-color: #111; color: #00ffff; border: 2px solid #00ffff; padding: 20px; width: 250px; cursor: pointer; font-family: monospace; font-size: 1.1rem;">
+                <strong>1. OVERCLOCK</strong><br><br>Permanently multiplies ALL Byte production by 10x.
+            </button>
+            <button onclick="selectUltraReward(2)"
+                style="background-color: #111; color: #ff00ff; border: 2px solid #ff00ff; padding: 20px; width: 250px; cursor: pointer; font-family: monospace; font-size: 1.1rem;">
+                <strong>2. DATA MINER</strong><br><br>Double the Rebirth Points gained from normal Rebirths.
+            </button>
+            <button onclick="selectUltraReward(3)"
+                style="background-color: #111; color: #ffff00; border: 2px solid #ffff00; padding: 20px; width: 250px; cursor: pointer; font-family: monospace; font-size: 1.1rem;">
+                <strong>3. GHOST CACHE</strong><br><br>Start every new run with 1 Billion Bytes immediately.
+            </button>
+        </div>
+    </div>
+    </body>
+    
+    </html>
