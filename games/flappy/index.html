@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Flappy Bird</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#70c5ce;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto;
+    display:grid;
+    place-items:center;
+    width:100vw;
+    height:100vh;
+    overflow:hidden;
+    touch-action:none;
+  }
+  .wrap{
+    position:relative;
+    width:100%;
+    height:100%;
+    max-width:min(100vmin*0.75, 500px);
+    max-height:min(100vmin, 800px);
+    aspect-ratio:3/4;
+    margin:auto;
+    background:linear-gradient(#70c5ce 0%, #70c5ce 70%, #ded895 70%);
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);
+  }
+  canvas{width:100%;height:100%;display:block}
+  .hud{
+    position:absolute;
+    top:20px;
+    left:0;right:0;
+    text-align:center;
+    font-size:48px;
+    font-weight:800;
+    color:white;
+    text-shadow:0 3px 0 rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.3);
+    pointer-events:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .overlay{
+    position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    background:rgba(0,0,0,.4);
+    backdrop-filter:blur(4px);
+  }
+  .card{
+    background:white;
+    padding:32px 40px;
+    border-radius:20px;
+    text-align:center;
+    box-shadow:0 20px 40px rgba(0,0,0,.3);
+  }
+  h1{font-size:32px;margin-bottom:8px;color:#333}
+  p{color:#666;margin-bottom:20px}
+  button{
+    background:#f9d71c;
+    border:3px solid #d4a017;
+    padding:12px 28px;
+    border-radius:12px;
+    font-weight:800;
+    font-size:18px;
+    cursor:pointer;
+    box-shadow:0 4px 0 #d4a017;
+  }
+  button:active{transform:translateY(2px);box-shadow:0 2px 0 #d4a017}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="game" width="400" height="600"></canvas>
+  <div class="hud" id="score">0</div>
+  <div class="overlay" id="overlay">
+    <div class="card">
+      <h1>🐦 FLAPPY</h1>
+      <p>Tap or press Space to fly</p>
+      <button id="play">Play</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const overlay = document.getElementById('overlay');
+  const playBtn = document.getElementById('play');
+
+  const W = canvas.width, H = canvas.height;
+  
+  let bird, pipes, frame, score, best, running;
+  
+  best = parseInt(localStorage.getItem('flappy-best')||'0');
+
+  function reset(){
+    bird = {x:80, y:H/2, v:0, rot:0};
+    pipes = [];
+    frame = 0;
+    score = 0;
+    running = true;
+    scoreEl.textContent = '0';
+  }
+
+  function flap(){
+    if(!running){
+      reset();
+      overlay.style.display = 'none';
+      return;
+    }
+    bird.v = -8.5;
+  }
+
+  function update(){
+    if(!running) return;
+    
+    frame++;
+    bird.v += 0.55;
+    bird.y += bird.v;
+    bird.rot = Math.max(-0.5, Math.min(0.8, bird.v * 0.05));
+    
+    // spawn pipes
+    if(frame % 95 === 0){
+      const gap = 160;
+      const top = Math.random() * (H - 300) + 80;
+      pipes.push({x:W, top, bottom: top + gap, passed:false});
+    }
+    
+    pipes.forEach(p => p.x -= 2.8);
+    pipes = pipes.filter(p => p.x > -80);
+    
+    // collision
+    if(bird.y < 20 || bird.y > H - 60){
+      die();
+    }
+    
+    pipes.forEach(p => {
+      if(bird.x + 18 > p.x && bird.x - 18 < p.x + 70){
+        if(bird.y - 18 < p.top || bird.y + 18 > p.bottom){
+          die();
+        }
+      }
+      if(!p.passed && p.x + 35 < bird.x){
+        p.passed = true;
+        score++;
+        scoreEl.textContent = score;
+      }
+    });
+  }
+
+  function die(){
+    running = false;
+    if(score > best){ best = score; localStorage.setItem('flappy-best', best); }
+    overlay.style.display = 'grid';
+    overlay.querySelector('h1').textContent = '💀 Game Over';
+    overlay.querySelector('p').textContent = `Score ${score} • Best ${best}`;
+    playBtn.textContent = 'Fly Again';
+  }
+
+  function draw(){
+    // sky
+    ctx.fillStyle = '#70c5ce';
+    ctx.fillRect(0,0,W,H);
+    
+    // clouds
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    for(let i=0;i<3;i++){
+      const x = (frame*0.3 + i*150) % (W+100) - 50;
+      ctx.beginPath();
+      ctx.arc(x, 80 + i*20, 25, 0, Math.PI*2);
+      ctx.arc(x+30, 80 + i*20, 20, 0, Math.PI*2);
+      ctx.fill();
+    }
+    
+    // pipes
+    pipes.forEach(p => {
+      // pipe body
+      const grad = ctx.createLinearGradient(p.x,0,p.x+70,0);
+      grad.addColorStop(0,'#5cb85c');
+      grad.addColorStop(0.5,'#4cae4c');
+      grad.addColorStop(1,'#5cb85c');
+      ctx.fillStyle = grad;
+      
+      // top pipe
+      ctx.fillRect(p.x, 0, 70, p.top);
+      // bottom pipe
+      ctx.fillRect(p.x, p.bottom, 70, H - p.bottom);
+      
+      // caps
+      ctx.fillStyle = '#4a9a4a';
+      ctx.fillRect(p.x-5, p.top-25, 80, 25);
+      ctx.fillRect(p.x-5, p.bottom, 80, 25);
+      
+      // highlights
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(p.x+5, 0, 8, p.top);
+      ctx.fillRect(p.x+5, p.bottom, 8, H);
+    });
+    
+    // ground
+    ctx.fillStyle = '#ded895';
+    ctx.fillRect(0, H-40, W, 40);
+    ctx.fillStyle = '#c9b86e';
+    for(let x=0;x<W;x+=40){
+      ctx.fillRect(x + (frame % 40), H-40, 20, 40);
+    }
+    
+    // bird - using emoji
+    ctx.save();
+    ctx.translate(bird.x, bird.y);
+    ctx.rotate(bird.rot);
+    ctx.font = '40px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillText('🐦', 2, 3);
+    // bird
+    ctx.fillText('🐦', 0, 0);
+    ctx.restore();
+  }
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // controls
+  window.addEventListener('keydown', e => {
+    if(e.code === 'Space'){ e.preventDefault(); flap(); }
+  });
+  canvas.addEventListener('pointerdown', flap);
+  playBtn.onclick = () => { reset(); overlay.style.display='none'; };
+
+  reset();
+  overlay.style.display = 'grid';
+  loop();
+})();
+</script>
+</body>
+</html>
