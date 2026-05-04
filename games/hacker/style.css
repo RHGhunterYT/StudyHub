@@ -1,0 +1,561 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+body, html {
+    background-color: #060806;
+    color: #39ff14; /* Neon Green */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden; /* Prevents scrollbars from the background */
+    position: relative;
+    font-family: monospace;
+}
+
+/* The Matrix Canvas sits at layer 0 */
+#matrix-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0; 
+    pointer-events: none; /* Lets you click completely through it */
+}
+
+.game-container {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Forces game in front of background */
+    border: 2px solid #39ff14;
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(57, 255, 20, 0.2);
+}
+
+.idle-hacker-back {
+    position:absolute;
+    top: 15px;
+    left: 15px;
+    display: inline-block;
+    text-decoration: none;
+    cursor: pointer;
+    z-index: 20000;
+}
+
+.idle-hacker-x-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 3px solid #39ff14;
+    color: #39ff14;
+    font-weight: bold;
+    font-size: 1.5rem;
+    background-color: transparent;
+}
+
+.idle-hacker-x-box:hover {
+    box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+}
+
+.mining-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border-right: 2px solid rgba(57, 255, 20, 0.2); /* Fader border */
+    overflow: auto;
+}
+
+.stats {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.stats h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: #fff;
+    text-shadow: 0 0 10px #39ff14;
+}
+
+#mine-btn {
+    background-color: transparent;
+    color: #39ff14;
+    border: 2px solid #39ff14;
+    padding: 20px 40px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.1s ease-in-out;
+}
+
+#mine-btn:hover {
+    box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+}
+
+#mine-btn:active {
+    background-color: #39ff14;
+    color: #0d1117;
+    transform: scale(0.95);
+}
+
+.shop-section {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: rgba(13, 17, 23, 0.6); /* Slihtly darker area */
+}
+
+.shop-section h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(57, 255, 20, 0.3);
+    padding-bottom: 10px;
+}
+
+.shop-item {
+    background-color: rgba(33, 38, 45, 0.8);
+    border: 1px solid rgba(57, 255, 20, 0.1);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.shop-item button {
+    background-color: #39ff14;
+    color: #0d1117;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.shop-item button:not(:disabled):hover {
+    background-color: #008000;
+}
+
+.shop-item button:disabled {
+    background-color: #555;
+    color: #666;
+    cursor: not-allowed;
+}
+
+.rebirth-item {
+    background-color: rgba(0, 40, 60, 0.8);
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.rebirth-item h3 {
+    color: #00ffff;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.rebirth-item button {
+    background-color: #00ffff;
+    color: #000;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.rebirth-item button:not(:disabled):hover {
+    background-color: #04a3a3;
+}
+
+.rebirth-item button:disabled {
+    background-color: #333;
+    color: #666;
+    cursor: not-allowed;
+}
+
+/* --- REBIRTH BUTTON --- */
+#rebirth-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Locked State */
+#rebirth-btn:disabled {
+    background-color: #2a002a; /* Dark purple base */
+    color: #cc66cc !important; /* Light enough to read, dark enough to look locked */
+    border: 2px solid #552255;
+    box-shadow: inset 0 0 10px #000;
+}
+
+/* Unlocked (Ready) State */
+#rebirth-btn:not(:disabled) {
+    background-color: #220022;
+    color: #ff00ff !important;
+    border: 2px solid #ff00ff;
+    box-shadow: 0 0 15px #ff00ff, inset 0 0 15px #ff00ff;
+    animation: rebirthPulse 1.5s infinite;
+}
+
+@keyframes rebirthPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+/* --- ULTRA REBIRTH BUTTON --- */
+#ultra-rebirth-btn {
+    background-color: #220022;
+    margin-top: 20px;
+    color: #ff33ff;
+    border: 1px solid #ff33ff;
+    margin-bottom: 15px;
+    padding: 10px;
+    font-weight: bold;
+    font-family: monospace;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s ease-in-out;
+}
+
+#ultra-rebirth-btn:disabled {
+    background-color: #1a1a1a;
+    color: #666666;
+    border: 1px solid #444444;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- HARD RESET BUTTON --- */
+#hard-reset-btn {
+    margin-top: 30px;
+    background-color: transparent;
+    color: #ff3333;
+    border: 1px solid #ff3333;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-family: monospace;
+    transition: all 0.2s ease;
+}
+
+#hard-reset-btn:hover {
+    background-color: #ff3333;
+    color: #000;
+    box-shadow: 0 0 10px #ff3333;
+}
+
+/* --- MODAL STYLING --- */
+.modal {
+    position: fixed; 
+    z-index: 1000; /* Keeps it on top of everything else */
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0, 0, 0, 0.8); /* Dark semi-transparent background */
+}
+
+.modal-content {
+    background-color: #111; /* Dark terminal background */
+    margin: 10% auto; /* Centers it vertically and horizontally */
+    padding: 20px;
+    border: 2px solid #00ff00; /* Hacker green border */
+    width: 60%; /* Adjusts the width of the box */
+    max-width: 600px;
+    color: #00ff00;
+    font-family: monospace;
+    text-align: left;
+    box-shadow: 0px 0px 15px #00ff00; /* Cool glowing effect */
+}
+
+.modal-content p {
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+/* --- INSTRUCTIONS BUTTON --- */
+#instructions-btn {
+    background-color: #000000; 
+    color: #00ff00; 
+    border: 1px solid #00ff00; 
+    font-family: monospace; 
+    padding: 8px 15px; 
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px; /* PUSHES IT DOWN AWAY FROM THE WIPE BUTTON */
+    margin-bottom: 10px; /* Adds space below it just in case */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out; 
+}
+
+#instructions-btn:hover {
+    background-color: #00ff00; 
+    color: #000000; 
+    box-shadow: 0px 0px 10px #00ff00; 
+}
+
+/* --- CLOSE MANUAL BUTTON --- */
+#close-instructions-btn {
+    background-color: #000000; 
+    color: #ff0000; /* Hacker red */
+    border: 1px solid #ff0000; 
+    font-family: monospace; 
+    padding: 8px 15px; 
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px; /* Pushes it away from the text inside the modal */
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out; 
+}
+
+/* Inverts to solid red when hovered */
+#close-instructions-btn:hover {
+    background-color: #ff0000; 
+    color: #000000;
+    text-decoration-color: #000000;
+    box-shadow: 0px 0px 10px #ff0000; /* Red glowing effect */
+}
+
+/* --- THEMATIC LICENSE BUTTON --- */
+#license-btn {
+    background-color: #050505;
+    color: #39ff14;
+    border: 1px dashed #39ff14;
+    padding: 12px;
+    margin-top: 20px;
+    font-family: monospace;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    text-align: left; /* Makes it look like typing in a console */
+    transition: all 0.2s ease-in-out;
+}
+
+#license-btn:hover {
+    background-color: #39ff14;
+    color: #050505;
+    box-shadow: 0 0 15px rgba(6, 6, 6, 0.6);
+    border: 1px solid #000000;
+}
+
+/* --- STUDIO BRANDING --- */
+#studio-logo {
+    position: fixed;
+    bottom: 10px;
+    left: 15px;
+    color: #00ffff;
+    font-family: monospace;
+    font-size: 0.9rem;
+    opacity: 0.5;
+    text-shadow: 0 0 5px #00ffff;
+    z-index: 1000;
+    transition: opacity 0.3s ease;
+    pointer-events: none; /* Prevents it from blocking clicks */
+}
+
+/* Lights up a bit more if they happen to hover near it */
+#studio-logo:hover {
+    opacity: 1;
+}
+
+/* --- TRANSPARENT GAME PANELS --- */
+.mining-section, .shop-section {
+    /* Lowered to 0.45 to let way more light through */
+    background-color: rgba(10, 10, 10, 0.45); 
+    
+    backdrop-filter: blur(2px); 
+    border: 1px solid #003300; 
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+}
+
+/* --- RANDOM EVENT POPUP --- */
+#data-packet {
+    position: fixed;
+    display: none; /* Stays invisible until the game summons it */
+    background-color: rgba(13, 17, 23, 0.9);
+    color: #ffff00; /* Warning Yellow */
+    border: 2px solid #ffff00;
+    padding: 15px 20px;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+    cursor: pointer;
+    z-index: 9999; /* Forces it to sit on top of everything else */
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+    animation: pulseWarning 1s infinite;
+}
+
+@keyframes pulseWarning {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 30px rgba(255, 255, 0, 0.6); }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* --- LICENSE MODAL --- */
+#license-modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.98); /* Dark hacker overlay */
+    z-index: 40000;
+    justify-content: center;
+    align-items: center;
+}
+
+.license-content {
+    background-color: #020202; /* Extremely dark background */
+    border: 2px solid #179800;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1);
+    color: #39ff14;
+    padding: 30px;
+    max-width: 600px;
+    width: 80%;
+    text-align: left; /* Left align for that authentic code-readout feel */
+    font-family: monospace;
+    position: relative;
+}
+
+/* Adds a cool little "system tab" at the top left of the modal */
+.license-content::before {
+    content: "[ SYSTEM EULA OVERRIDE ]";
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background-color: #020202;
+    padding: 0 10px;
+    font-size: 0.9rem;
+    color: #39ff14; /* Magenta accent */
+    font-weight: bold;
+}
+
+/* This makes the text scrollable if your license gets really long! */
+.license-text {
+    max-height: 50vh;
+    overflow-y: auto;
+    margin: 20px 0;
+    color: #00cc00; /* Classic hacker green text for the legal jargon */
+    padding-right: 15px;
+    line-height: 1.6;
+    border-top: 1px dashed #333;
+    border-bottom: 1px dashed #333;
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+/* Styles the scrollbar specifically for the modal so it stays thematic */
+.license-text::-webkit-scrollbar {
+    width: 8px;
+}
+.license-text::-webkit-scrollbar-track {
+    background: #111; 
+}
+.license-text::-webkit-scrollbar-thumb {
+    background: #39ff14; 
+}
+
+#license-close-btn {
+    background-color: #111;
+    color: #39ff14; /* Magenta to signify danger/closing */
+    border: 1px solid #39ff14;
+    padding: 10px 20px;
+    width: 100%;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 1.1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+#license-close-btn:hover {
+    background-color: #39ff14;
+    color: #111;
+    box-shadow: 0 0 15px rgba(255, 51, 255, 0.6);
+}
+
+/* --- BOOT SCREEN --- */
+#boot-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+    color: #00ff00;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Keeps it on top of the entire game */
+    cursor: crosshair; /* Cool hacker cursor */
+    font-family: monospace;
+    text-align: center;
+}
+
+/* Blinking text animation */
+.blink {
+    animation: blinker 1.2s linear infinite;
+    font-size: 1.2em;
+    margin-top: 20px;
+}
+
+@keyframes blinker {
+    50% { opacity: 0; }
+}
+
+/* --- MUTE BUTTON --- */
+#mute-btn {
+    background-color: #000000;
+    color: #00ff00;
+    border: 1px solid #00ff00;
+    font-family: monospace;
+    padding: 8px 15px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    margin-left: 10px; /* Gives it a little space if it sits next to another button */
+    transition: all 0.2s ease-in-out;
+}
+
+#mute-btn:hover {
+    background-color: #00ff00;
+    color: #000000;
+    box-shadow: 0px 0px 10px #00ff00;
+}
+
+/* --- MUTED STATE (Turns red when audio is off) --- */
+#mute-btn.muted {
+    color: #ff0000;
+    border-color: #ff0000;
+}
+
+#mute-btn.muted:hover {
+    background-color: #ff0000;
+    color: #000000;
+    box-shadow: 0px 0px 10px #ff0000;
+}
