@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Breakout - Multiball</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#0f172a;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto;
+    display:grid;
+    place-items:center;
+    width:100vw;
+    height:100vh;
+    overflow:hidden;
+    touch-action:none;
+    color:#e2e8f0;
+  }
+  .wrap{
+    position:relative;
+    width:100%;
+    height:100%;
+    max-width:min(100vw, 900px);
+    max-height:min(100vh, 700px);
+    aspect-ratio:4/3;
+    margin:auto;
+    background:#020617;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  canvas{width:100%;height:100%;display:block;background:linear-gradient(#0f172a,#020617)}
+  .hud{
+    position:absolute;
+    top:12px;
+    left:12px;
+    right:12px;
+    display:flex;
+    justify-content:space-between;
+    font-weight:700;
+    text-shadow:0 2px 4px rgba(0,0,0,.8);
+    pointer-events:none;
+  }
+  .pill{
+    background:rgba(2,6,23,.7);
+    padding:6px 12px;
+    border-radius:999px;
+    border:1px solid rgba(148,163,184,.2);
+    backdrop-filter:blur(6px);
+  }
+  .overlay{
+    position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    background:rgba(0,0,0,.6);
+    backdrop-filter:blur(4px);
+  }
+  .card{
+    background:#1e293b;
+    padding:32px;
+    border-radius:20px;
+    text-align:center;
+    border:1px solid #334155;
+  }
+  h1{font-size:28px;margin-bottom:8px}
+  p{opacity:.8;margin-bottom:16px}
+  button{
+    background:#38bdf8;
+    color:#001018;
+    border:0;
+    padding:10px 20px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="game" width="800" height="600"></canvas>
+  <div class="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Balls: <span id="balls">1</span></div>
+    <div class="pill">Level: <span id="level">1</span></div>
+  </div>
+  <div class="overlay" id="overlay">
+    <div class="card">
+      <h1>BREAKOUT</h1>
+      <p>Each color has different health.<br>Break a block = +1 ball</p>
+      <button id="play">Play</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const ballsEl = document.getElementById('balls');
+  const levelEl = document.getElementById('level');
+  const overlay = document.getElementById('overlay');
+  const playBtn = document.getElementById('play');
+
+  const W = canvas.width, H = canvas.height;
+  const PADDLE_W = 100, PADDLE_H = 14;
+  
+  // colors with health
+  const BLOCK_TYPES = [
+    {color:'#ef4444', health:1, points:10},  // red
+    {color:'#f97316', health:2, points:20},  // orange
+    {color:'#eab308', health:3, points:30},  // yellow
+    {color:'#22c55e', health:4, points:40},  // green
+    {color:'#3b82f6', health:5, points:50},  // blue
+    {color:'#a855f7', health:6, points:60},  // purple
+  ];
+
+  let paddle, balls, blocks, score, level, running;
+
+  function resetLevel(){
+    paddle = {x:W/2-PADDLE_W/2, y:H-50, w:PADDLE_W, h:PADDLE_H};
+    balls = [{x:W/2, y:H-70, vx:3, vy:-3.2, r:8}];
+    blocks = [];
+    const cols = 10, rows = 6;
+    const bw = 70, bh = 24, gap = 6;
+    const startX = (W - (cols*(bw+gap)-gap))/2;
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const type = BLOCK_TYPES[Math.floor(Math.random() * BLOCK_TYPES.length)];
+        blocks.push({
+          x: startX + c*(bw+gap),
+          y: 80 + r*(bh+gap),
+          w: bw, h: bh,
+          health: type.health,
+          maxHealth: type.health,
+          color: type.color,
+          points: type.points
+        });
+      }
+    }
+    updateHUD();
+  }
+
+  function updateHUD(){
+    scoreEl.textContent = score;
+    ballsEl.textContent = balls.length;
+    levelEl.textContent = level;
+  }
+
+  function spawnBall(x,y){
+    const angle = (Math.random()-0.5) * 1.2;
+    const speed = 4 + Math.random()*1.5;
+    balls.push({
+      x, y,
+      vx: Math.sin(angle)*speed,
+      vy: -Math.abs(Math.cos(angle)*speed),
+      r:8
+    });
+  }
+
+  function update(){
+    if(!running) return;
+    
+    // paddle follow mouse/touch
+    // movement handled in event
+    
+    balls.forEach(b => {
+      b.x += b.vx;
+      b.y += b.vy;
+      
+      // walls
+      if(b.x < b.r || b.x > W-b.r) b.vx *= -1;
+      if(b.y < b.r) b.vy *= -1;
+      
+      // paddle
+      if(b.y + b.r > paddle.y && b.y - b.r < paddle.y + paddle.h &&
+         b.x > paddle.x && b.x < paddle.x + paddle.w && b.vy > 0){
+        b.vy = -Math.abs(b.vy);
+        // add spin based on hit position
+        const hitPos = (b.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+        b.vx = hitPos * 5;
+        b.y = paddle.y - b.r;
+      }
+      
+      // blocks
+      blocks.forEach(block => {
+        if(block.health <= 0) return;
+        if(b.x + b.r > block.x && b.x - b.r < block.x + block.w &&
+           b.y + b.r > block.y && b.y - b.r < block.y + block.h){
+          
+          // determine bounce direction
+          const overlapLeft = b.x + b.r - block.x;
+          const overlapRight = block.x + block.w - (b.x - b.r);
+          const overlapTop = b.y + b.r - block.y;
+          const overlapBottom = block.y + block.h - (b.y - b.r);
+          const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+          
+          if(minOverlap === overlapLeft || minOverlap === overlapRight) b.vx *= -1;
+          else b.vy *= -1;
+          
+          block.health--;
+          if(block.health <= 0){
+            score += block.points;
+            // +1 ball per block broken
+            spawnBall(block.x + block.w/2, block.y + block.h/2);
+            updateHUD();
+          }
+        }
+      });
+    });
+    
+    // remove dead balls
+    balls = balls.filter(b => b.y < H + 50);
+    
+    if(balls.length === 0){
+      running = false;
+      overlay.style.display = 'grid';
+      overlay.querySelector('h1').textContent = 'Game Over';
+      overlay.querySelector('p').innerHTML = `Score ${score}<br>Press Play to restart`;
+      playBtn.textContent = 'Play Again';
+    }
+    
+    // level complete
+    if(blocks.every(b => b.health <= 0)){
+      level++;
+      resetLevel();
+      // keep balls, add one more
+      spawnBall(W/2, H/2);
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    
+    // paddle glow
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    ctx.shadowBlur = 0;
+    
+    // balls
+    balls.forEach(b => {
+      const grad = ctx.createRadialGradient(b.x-3,b.y-3,0,b.x,b.y,b.r*2);
+      grad.addColorStop(0,'#7dd3fc');
+      grad.addColorStop(1,'#0ea5e9');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fill();
+    });
+    
+    // blocks with health
+    blocks.forEach(block => {
+      if(block.health <= 0) return;
+      
+      const healthRatio = block.health / block.maxHealth;
+      ctx.globalAlpha = 0.3 + healthRatio * 0.7;
+      
+      // main block
+      ctx.fillStyle = block.color;
+      ctx.fillRect(block.x, block.y, block.w, block.h);
+      
+      // health indicator - darker overlay for damage
+      if(block.health < block.maxHealth){
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(block.x, block.y, block.w, block.h * (1 - healthRatio));
+      }
+      
+      // highlight
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = 'white';
+      ctx.fillRect(block.x, block.y, block.w, 3);
+      
+      ctx.globalAlpha = 1;
+      
+      // health number
+      if(block.maxHealth > 1){
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 14px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(block.health, block.x + block.w/2, block.y + block.h/2 + 1);
+      }
+    });
+  }
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // controls
+  function movePaddle(clientX){
+    const rect = canvas.getBoundingClientRect();
+    const x = (clientX - rect.left) * (W / rect.width);
+    paddle.x = Math.max(0, Math.min(W - paddle.w, x - paddle.w/2));
+  }
+  
+  canvas.addEventListener('mousemove', e => movePaddle(e.clientX));
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); movePaddle(e.touches[0].clientX); }, {passive:false});
+  
+  playBtn.onclick = () => {
+    score = 0;
+    level = 1;
+    running = true;
+    resetLevel();
+    overlay.style.display = 'none';
+  };
+
+  // init
+  score = 0; level = 1;
+  resetLevel();
+  running = false;
+  loop();
+})();
+</script>
+</body>
+</html>
