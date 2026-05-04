@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Playables SDK -->
+    <script>// Playables SDK v1.0.0
+        // Game lifecycle bridge: rAF-based game-ready detection + event communication
+        (function () {
+            'use strict';
+
+            // Idempotency: skip if already initialized (e.g., server-side injection
+            // followed by client-side inject-javascript via the Bloks webview component).
+            if (window.playablesSDK) return;
+
+            var HANDLER_NAME = 'playablesGameEventHandler';
+            var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+            var RAF_FRAME_THRESHOLD = 3;
+
+            var gameReadySent = false;
+            var firstInteractionSent = false;
+            var errorSent = false;
+            var frameCount = 0;
+            var originalRAF = window.requestAnimationFrame;
+
+            // --- Transport Layer ---
+
+            function hasIOSBridge() {
+                return !!(window.webkit &&
+                    window.webkit.messageHandlers &&
+                    window.webkit.messageHandlers[HANDLER_NAME]);
+            }
+
+            function hasAndroidBridge() {
+                return !!(window[ANDROID_BRIDGE_NAME] &&
+                    typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+            }
+
+            function isInIframe() {
+                return !!(window.parent && window.parent !== window);
+            }
+
+            function sendEvent(eventName, payload) {
+                var message = {
+                    type: eventName,
+                    payload: payload || {},
+                    timestamp: Date.now()
+                };
+
+                if (hasIOSBridge()) {
+                    try {
+                        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+                    } catch (e) { /* ignore */ }
+                    return;
+                }
+
+                if (hasAndroidBridge()) {
+                    try {
+                        var p = payload || {};
+                        p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+                        window[ANDROID_BRIDGE_NAME].postEvent(
+                            eventName,
+                            JSON.stringify(p)
+                        );
+                    } catch (e) { /* ignore */ }
+                    return;
+                }
+
+                if (isInIframe()) {
+                    try {
+                        window.parent.postMessage(message, '*');
+                    } catch (e) { /* ignore */ }
+                    return;
+                }
+            }
+
+            // --- rAF Game-Ready Detection ---
+
+            function onFrame() {
+                if (gameReadySent) return;
+
+                frameCount++;
+                if (frameCount >= RAF_FRAME_THRESHOLD) {
+                    gameReadySent = true;
+                    sendEvent('game_ready', {
+                        frame_count: frameCount,
+                        detected_at: Date.now()
+                    });
+                    return;
+                }
+
+                originalRAF.call(window, onFrame);
+            }
+
+            if (originalRAF) {
+                window.requestAnimationFrame = function (callback) {
+                    if (!gameReadySent) {
+                        return originalRAF.call(window, function (timestamp) {
+                            frameCount++;
+                            if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+                                gameReadySent = true;
+                                sendEvent('game_ready', {
+                                    frame_count: frameCount,
+                                    detected_at: Date.now()
+                                });
+                            }
+                            callback(timestamp);
+                        });
+                    }
+                    return originalRAF.call(window, callback);
+                };
+            }
+
+            // --- First User Interaction Detection ---
+
+            function setupFirstInteractionDetection() {
+                var events = ['touchstart', 'mousedown', 'keydown'];
+
+                function onFirstInteraction() {
+                    if (firstInteractionSent) return;
+                    firstInteractionSent = true;
+                    sendEvent('user_interaction_start', null);
+
+                    for (var i = 0; i < events.length; i++) {
+                        document.removeEventListener(events[i], onFirstInteraction, true);
+                    }
+                }
+
+                for (var i = 0; i < events.length; i++) {
+                    document.addEventListener(events[i], onFirstInteraction, true);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+            } else {
+                setupFirstInteractionDetection();
+            }
+
+            // --- Auto Error Capture ---
+
+            window.addEventListener('error', function (event) {
+                if (errorSent) return;
+                errorSent = true;
+                sendEvent('error', {
+                    message: event.message || 'Unknown error',
+                    source: event.filename || '',
+                    lineno: event.lineno || 0,
+                    colno: event.colno || 0,
+                    auto_captured: true
+                });
+            });
+
+            window.addEventListener('unhandledrejection', function (event) {
+                if (errorSent) return;
+                errorSent = true;
+                var reason = event.reason;
+                sendEvent('error', {
+                    message: (reason instanceof Error) ? reason.message : String(reason),
+                    type: 'unhandled_promise_rejection',
+                    auto_captured: true
+                });
+            });
+
+            // --- Public API ---
+
+            window.playablesSDK = {
+                complete: function (score) {
+                    sendEvent('game_ended', {
+                        score: score,
+                        completed: true
+                    });
+                },
+
+                error: function (message) {
+                    if (errorSent) return;
+                    errorSent = true;
+                    sendEvent('error', {
+                        message: message || 'Unknown error',
+                        auto_captured: false
+                    });
+                },
+
+                sendEvent: function (eventName, payload) {
+                    if (!eventName || typeof eventName !== 'string') return;
+                    sendEvent(eventName, payload);
+                }
+            };
+
+            // Kick off rAF detection in case no game code calls rAF immediately
+            if (originalRAF) {
+                originalRAF.call(window, onFrame);
+            }
+        })();</script>
+    <script>window.Intl = window.Intl || {}; Intl.t = function (s) { return (Intl._locale && Intl._locale[s]) || s; };</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idle Rich Business</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="apple-touch-icon" href="logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e14;
+            --gold: #fbbf24;
+            --gold-2: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        #exitBtn {
+            position: fixed;
+            top: 5px;
+            left: 5px;
+            z-index: 9999;
+            width: 38px;
+            height: 38px;
+            background: rgba(10,14,20,0.85);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            color: #e5e7eb;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+        }
+        #exitBtn:hover {
+            background: rgba(239,68,68,0.9);
+            border-color: rgba(239,68,68,0.5);
+            transform: translateY(-1px);
+            color: white;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            background: var(--bg);
+            color: #e5e7eb;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #bg-decoration {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(800px 400px at 50% -10%, rgba(251, 191, 36, .15), transparent 60%),
+                radial-gradient(600px 300px at 85% 15%, rgba(139, 92, 246, .10), transparent 60%),
+                radial-gradient(500px 300px at 15% 80%, rgba(14, 165, 233, .08), transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass {
+            background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, .08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            margin: 12px;
+            border-radius: 20px;
+            gap: 16px;
+        }
+
+        .money {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 800;
+            color: var(--gold);
+            letter-spacing: -1px;
+            text-shadow: 0 0 30px rgba(251, 191, 36, .3);
+            line-height: 1;
+        }
+
+        .money-sub {
+            display: flex;
+            gap: 10px;
+            color: #9ca3af;
+            font-size: .95rem;
+            margin-top: 6px;
+            align-items: center
+        }
+
+        .dot {
+            opacity: .5
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 22px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .header-stats>div {
+            min-width: 110px
+        }
+
+        .header-stats label {
+            display: block;
+            font-size: .68rem;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: #9ca3af;
+            margin-bottom: 2px
+        }
+
+        .header-stats span {
+            font-weight: 700;
+            color: #fff;
+            font-size: 1.05rem
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px
+        }
+
+        .header-actions button {
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .1);
+            color: #fff;
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            cursor: pointer;
+            transition: .2s;
+            font-size: 16px;
+        }
+
+        .header-actions button:hover {
+            background: rgba(255, 255, 255, .12);
+            transform: translateY(-1px)
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 360px 1fr 360px;
+            gap: 16px;
+            padding: 0 12px 20px;
+            flex: 1;
+            align-items: start
+        }
+
+        .panel {
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 140px);
+        }
+
+        .panel.left {
+            background: rgba(0, 0, 0, .2);
+            border: 1px solid rgba(255, 255, 255, .06)
+        }
+
+        .panel.right {
+            background: rgba(0, 0, 0, .2);
+            border: 1px solid rgba(255, 255, 255, .06)
+        }
+
+        .panel-header {
+            margin-bottom: 12px
+        }
+
+        .tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 10px
+        }
+
+        .tabs button {
+            background: rgba(0, 0, 0, .35);
+            border: 1px solid rgba(255, 255, 255, .06);
+            color: #9ca3af;
+            padding: 9px 8px;
+            border-radius: 10px;
+            font-size: .85rem;
+            cursor: pointer;
+            transition: .2s;
+            font-weight: 600;
+        }
+
+        .tabs button.active {
+            background: rgba(251, 191, 36, .15);
+            color: var(--gold);
+            border-color: rgba(251, 191, 36, .35);
+            box-shadow: 0 0 20px rgba(251, 191, 36, .1) inset
+        }
+
+        .buy-modes {
+            display: flex;
+            gap: 6px
+        }
+
+        .buy-modes button {
+            flex: 1;
+            background: rgba(0, 0, 0, .35);
+            border: 1px solid rgba(255, 255, 255, .06);
+            color: #9ca3af;
+            padding: 7px;
+            border-radius: 8px;
+            font-size: .8rem;
+            cursor: pointer;
+            font-weight: 700;
+            transition: .2s;
+        }
+
+        .buy-modes button.active {
+            background: var(--gold);
+            color: #0a0e14;
+            border-color: transparent
+        }
+
+        .items {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px;
+            flex: 1
+        }
+
+        .items::-webkit-scrollbar {
+            width: 6px
+        }
+
+        .items::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .1);
+            border-radius: 3px
+        }
+
+        .item {
+            display: flex;
+            align-items: flex-start;
+            /* was: center */
+            gap: 10px;
+            padding: 11px;
+            background: rgba(0, 0, 0, .28);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: .15s;
+            min-height: auto;
+            /* allows growing */
+        }
+
+        .item:hover {
+            background: rgba(0, 0, 0, .42);
+            transform: translateY(-1px);
+            border-color: rgba(251, 191, 36, .25)
+        }
+
+        .item.locked {
+            opacity: .55
+        }
+
+        .item.owned {
+            border-color: rgba(16, 185, 129, .35);
+            background: rgba(16, 185, 129, .06)
+        }
+
+        .item-icon {
+            font-size: 1.8rem;
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, .05);
+            border-radius: 11px;
+            flex-shrink: 0
+        }
+
+        .item-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .item-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            /* allows wrapping */
+            align-items: flex-start;
+        }
+
+        .item-top .owned {
+            color: #9ca3af;
+            font-size: .85rem;
+            font-weight: 600
+        }
+
+        .item-stats,
+        .item-desc {
+            font-size: .8rem;
+            color: #9ca3af;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .item-cost {
+            font-weight: 800;
+            color: var(--gold);
+            font-size: .95rem;
+            text-align: right;
+            min-width: 84px
+        }
+
+        .item-name {
+            white-space: normal;
+            /* was: nowrap */
+            word-break: break-word;
+            /* breaks long names */
+            line-height: 1.25;
+            /* prevents overlap */
+            font-weight: 650;
+            font-size: 14px;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .progress {
+            height: 4px;
+            background: rgba(255, 255, 255, .08);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden
+        }
+
+        .progress div {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), var(--gold-2));
+            width: 0%;
+            transition: width .25s linear
+        }
+
+        .center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 520px;
+            padding: 20px
+        }
+
+        .hustle-wrap {
+            position: relative
+        }
+
+        .hustle-btn {
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fde68a, #fbbf24 40%, #d97706 85%);
+            border: 4px solid rgba(255, 255, 255, .22);
+            box-shadow: 0 0 60px rgba(251, 191, 36, .38), inset 0 -14px 26px rgba(0, 0, 0, .32), inset 0 14px 26px rgba(255, 255, 255, .22);
+            cursor: pointer;
+            position: relative;
+            transition: transform .07s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.1rem;
+            font-weight: 900;
+            color: #422006;
+            letter-spacing: 2px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hustle-btn span {
+            text-shadow: 0 2px 0 rgba(255, 255, 255, .45), 0 -1px 0 rgba(0, 0, 0, .2)
+        }
+
+        .hustle-btn:active,
+        .hustle-btn.clicked {
+            transform: scale(.93)
+        }
+
+        .hustle-btn .pulse {
+            position: absolute;
+            inset: -18px;
+            border-radius: 50%;
+            border: 2px solid rgba(251, 191, 36, .5);
+            animation: pulse 2.2s infinite
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(.88);
+                opacity: .9
+            }
+
+            70% {
+                transform: scale(1.18);
+                opacity: 0
+            }
+
+            100% {
+                opacity: 0
+            }
+        }
+
+        #floaters {
+            position: absolute;
+            inset: 0;
+            pointer-events: none
+        }
+
+        .floater {
+            position: absolute;
+            font-weight: 900;
+            color: var(--gold);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, .9), 0 0 20px rgba(251, 191, 36, .6);
+            font-size: 1.4rem;
+            animation: floatUp 1s ease-out forwards;
+            left: 50%;
+            top: 35%;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 0) scale(1)
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -110px) scale(1.15)
+            }
+        }
+
+        #particles {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50
+        }
+
+        .particle {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            background: var(--gold);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pop .8s ease-out forwards;
+            box-shadow: 0 0 12px var(--gold)
+        }
+
+        @keyframes pop {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1)
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(var(--x), var(--y)) scale(0)
+            }
+        }
+
+        .event-banner {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 90%;
+            max-width: 520px;
+            pointer-events: none
+        }
+
+        .event {
+            background: rgba(251, 191, 36, .14);
+            border: 1px solid rgba(251, 191, 36, .38);
+            color: #fde68a;
+            padding: 10px 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+            animation: slideDown .35s;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-18px);
+                opacity: 0
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1
+            }
+        }
+
+        .right-section {
+            margin-bottom: 18px
+        }
+
+        .right-section h3 {
+            margin: 0 0 10px;
+            font-size: .92rem;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: #9ca3af;
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px
+        }
+
+        .stats-grid div {
+            background: rgba(0, 0, 0, .28);
+            padding: 10px 12px;
+            border-radius: 11px;
+            border: 1px solid rgba(255, 255, 255, .05)
+        }
+
+        .stats-grid label {
+            display: block;
+            font-size: .68rem;
+            color: #9ca3af;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: .05em
+        }
+
+        .stats-grid span {
+            font-weight: 700;
+            font-size: .98rem;
+            color: #fff
+        }
+
+        .ach-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px
+        }
+
+        .ach {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            background: rgba(0, 0, 0, .35);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: 10px;
+            filter: grayscale(1) opacity(.38);
+            transition: .2s;
+            position: relative;
+        }
+
+        .ach.unlocked {
+            filter: none;
+            background: rgba(251, 191, 36, .16);
+            border-color: rgba(251, 191, 36, .35);
+            box-shadow: 0 0 14px rgba(251, 191, 36, .18) inset;
+            transform: translateY(-1px)
+        }
+
+        .ach:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111827;
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: .7rem;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, .1);
+            z-index: 10;
+            pointer-events: none
+        }
+
+        .prestige-box {
+            background: rgba(0, 0, 0, .28);
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, .25)
+        }
+
+        .prestige-box .muted {
+            font-size: .8rem;
+            color: #9ca3af;
+            margin: 4px 0 12px
+        }
+
+        .btn-gold {
+            width: 100%;
+            background: linear-gradient(180deg, #fbbf24, #d97706);
+            color: #0a0e14;
+            border: none;
+            padding: 11px;
+            border-radius: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: .2s;
+            letter-spacing: .2px
+        }
+
+        .btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 22px rgba(251, 191, 36, .28)
+        }
+
+        .btn-gold:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, .08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, .12);
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: .2s
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, .14)
+        }
+
+        .event-log {
+            background: rgba(0, 0, 0, .28);
+            border-radius: 11px;
+            padding: 8px 10px;
+            height: 130px;
+            overflow-y: auto;
+            font-size: .8rem;
+            border: 1px solid rgba(255, 255, 255, .05)
+        }
+
+        .event-log div {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .04);
+            color: #d1d5db
+        }
+
+        .event-log .time {
+            color: #6b7280;
+            margin-right: 6px;
+            font-size: .72rem
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .86);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px
+        }
+
+        .modal.hidden {
+            display: none
+        }
+
+        .modal-content {
+            max-width: 520px;
+            width: 100%;
+            padding: 30px;
+            border-radius: 24px;
+            text-align: center
+        }
+
+        .modal-content h2 {
+            margin: 0 0 8px;
+            color: var(--gold);
+            font-size: 1.9rem;
+            font-weight: 900
+        }
+
+        .modal-content p {
+            color: #d1d5db;
+            line-height: 1.5
+        }
+
+        .modal-content ul {
+            text-align: left;
+            margin: 18px 0 22px;
+            color: #d1d5db;
+            padding-left: 20px
+        }
+
+        .modal-content li {
+            margin: 9px 0
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px
+        }
+
+        .modal-actions button {
+            flex: 1
+        }
+
+        .prestige-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 16px 0
+        }
+
+        .prestige-stats div {
+            background: rgba(0, 0, 0, .35);
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, .06)
+        }
+
+        .prestige-stats b {
+            display: block;
+            font-size: 1.3rem;
+            color: var(--gold);
+            margin-top: 4px
+        }
+
+        #toast-container {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none
+        }
+
+        .toast {
+            background: linear-gradient(180deg, rgba(17, 24, 39, .96), rgba(10, 14, 20, .96));
+            border: 1px solid rgba(251, 191, 36, .32);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            min-width: 270px;
+            max-width: 340px;
+            box-shadow: 0 12px 34px rgba(0, 0, 0, .55);
+            backdrop-filter: blur(12px);
+            animation: slideIn .32s cubic-bezier(.2, .8, .2, 1);
+            transition: .35s;
+        }
+
+        .toast-icon {
+            font-size: 1.45rem;
+            filter: drop-shadow(0 2px 6px rgba(251, 191, 36, .4))
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(120%);
+                opacity: 0
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1
+            }
+        }
+
+        .muted {
+            color: #9ca3af
+        }
+
+        @media (max-width:1100px) {
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+                padding-bottom: 40px
+            }
+
+            .panel {
+                max-height: none
+            }
+
+            .panel.left,
+            .panel.right {
+                background: rgba(0, 0, 0, .18)
+            }
+
+            .center {
+                order: -1;
+                min-height: 400px;
+                padding: 10px 0 20px
+            }
+
+            .hustle-btn {
+                width: 200px;
+                height: 200px;
+                font-size: 1.7rem
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 14px
+            }
+
+            .header-stats {
+                width: 100%;
+                justify-content: space-between
+            }
+
+            .header-stats>div {
+                min-width: auto
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="bg-decoration"></div>
+    <div id="particles"></div>
+    <div id="toast-container"></div>
+    <div class="app">
+        <header class="header glass">
+            <div class="money-display">
+                <div class="money" id="money">$0</div>
+                <div class="money-sub">
+                    <span id="mps">$0/sec</span>
+                    <span class="dot">•</span>
+                    <span id="mpc">$1/click</span>
+                </div>
+                <div class="header-stats">
+                    <div><label>Total Earned</label><span id="totalEarned">$0</span></div>
+                    <div><label>Investor Bonus</label><span id="prestigeBonus">+0%</span></div>
+                    <div class="header-actions">
+                        <button id="saveBtn" title="Save Game">💾</button>
+                        <button id="soundBtn" title="Toggle Sound">🔊</button>
+                        <button id="resetBtn" title="Reset Game">♻️</button>
+                        <button id="licenseBtn" title="View License">📜</button>
+                    </div>
+                </div>
+        </header>
+
+        <main class="grid">
+            <aside class="panel left">
+                <div class="panel-header">
+                    <div class="tabs" id="tabs">
+                        <button class="tab active" data-tab="realEstate">🏢 Real Estate</button>
+                        <button class="tab" data-tab="driving">🚗 Driving</button>
+                        <button class="tab" data-tab="businesses">🏪 Businesses</button>
+                        <button class="tab" data-tab="upgrades">⚡ Upgrades</button>
+                    </div>
+                    <div class="buy-modes" id="buyModes">
+                        <button data-mode="1" class="active">x1</button>
+                        <button data-mode="10">x10</button>
+                        <button data-mode="100">x100</button>
+                        <button data-mode="max">MAX</button>
+                    </div>
+                </div>
+                <div class="items" id="itemsList"></div>
+            </aside>
+
+            <section class="center">
+                <div class="event-banner" id="eventBanner"></div>
+                <div class="hustle-wrap">
+                    <button id="hustleBtn" class="hustle-btn" aria-label="Hustle">
+                        <span>HUSTLE</span>
+                        <div class="pulse"></div>
+                    </button>
+                    <div id="floaters"></div>
+                </div>
+            </section>
+
+            <aside class="panel right">
+                <div class="right-section">
+                    <h3>Statistics</h3>
+                    <div class="stats-grid">
+                        <div><label>Time Played</label><span id="timePlayed">0s</span></div>
+                        <div><label>Total Clicks</label><span id="totalClicks">0</span></div>
+                        <div><label>Assets Owned</label><span id="buildingsOwned">0</span></div>
+                        <div><label>Best $/sec</label><span id="highestMps">$0/s</span></div>
+                                                <div><label>Lifetime Earned</label><span id="lifetimeEarned">$0</span></div>
+                                            </div>
+                </div>
+
+                <div class="right-section">
+                    <h3>Achievements <span id="achCount" class="muted">0/33</span></h3>
+                    <div class="ach-grid" id="achievementsGrid"></div>
+                </div>
+
+                <div class="right-section">
+                    <h3>Prestige</h3>
+                    <div class="prestige-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center">
+                            <div>Investor Points</div>
+                            <b id="prestigePointsDisplay" style="color:var(--gold); font-size:1.2rem">0</b>
+                        </div>
+                        <div class="muted">Each point = +5% permanent income & clicks</div>
+                        <button id="prestigeBtn" class="btn-gold" style="margin-top:8px">View Prestige</button>
+                    </div>
+                </div>
+
+                <div class="right-section">
+                    <h3>Event Log</h3>
+                    <div id="eventLog" class="event-log"></div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <div id="tutorial" class="modal hidden">
+        <div class="modal-content glass">
+            <h2>Welcome to Idle Rich Business 💰</h2>
+            <p>Build your empire from $1 to billions. Click, invest, and automate.</p>
+            <ul>
+                <li><b>SPACE or CLICK</b> the HUSTLE button to earn</li>
+                <li>Buy <b>Real Estate, Vehicles & Businesses</b> for passive income</li>
+                <li>Unlock <b>Upgrades</b> to multiply your earnings</li>
+                <li><b>Prestige</b> at $1M for permanent Investor Points</li>
+                <li>Watch for random <b>Market Events!</b></li>
+            </ul>
+            <button id="tutorialStart" class="btn-gold">Start Hustling</button>
+            <p class="muted" style="margin-top:12px; font-size:.8rem">Tip: Press 1-4 to switch tabs, B for MAX buy</p>
+        </div>
+    </div>
+
+    <div id="prestigeModal" class="modal hidden">
+        <div class="modal-content glass">
+            <h2>Investor Prestige 🌟</h2>
+            <p>Reset your businesses, keep your knowledge. Gain permanent power.</p>
+            <div class="prestige-stats">
+                <div>Current Points<b id="currentPrestige">0</b></div>
+                <div>Potential Gain<b id="prestigeGain" style="color:#10b981">0</b></div>
+                <div>New Bonus<b id="prestigeBonusNext">+0%</b></div>
+            </div>
+            <p class="muted">Prestige cost doubles each time (1M, 2M, 4M...). Each point gives +5% permanent income.</p>
+            <div class="modal-actions">
+                <button id="prestigeClose" class="btn">Cancel</button>
+                <button id="prestigeConfirm" class="btn-gold">Prestige Now</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LICENSE MODAL -->
+    <div id="licenseModal" class="modal hidden">
+        <div class="modal-content glass" style="max-width: 600px;">
+            <h2>Idle Billionaire — License 📜</h2>
+            <div
+                style="max-height: 60vh; overflow-y: auto; text-align: left; font-size: 0.9rem; line-height: 1.6; color: #d1d5db; padding-right: 8px;">
+                <p><strong>Copyright © 2026 RHGhunter. All Rights Reserved.</strong></p>
+    
+                <p><strong>1. Ownership.</strong> This game, including all source code, graphics, audio, design, and
+                    gameplay mechanics ("the Software"), is the exclusive intellectual property of the creator.</p>
+    
+                <p><strong>2. Personal Use Only.</strong> You are granted a limited, non-exclusive license to play the game
+                    for personal, non-commercial entertainment. You may not copy, modify, or extract the source code for any
+                    purpose.</p>
+    
+                <p><strong>3. No Redistribution.</strong> You may NOT redistribute, republish, re-upload, sell, or host this
+                    game or any modified version on any website, app store, arcade, or platform without prior written
+                    permission.</p>
+    
+                <p><strong>4. Source Code Use Requires Permission.</strong> The source code is NOT open source. You must ask
+                    for explicit written permission before using, viewing, learning from, or reusing any part of the code.
+                    If permission is granted, you MUST provide clear, visible credit to the original creator in your
+                    project.</p>
+    
+                <p><strong>5. No Commercial Use.</strong> You may not use this game or its code for commercial purposes,
+                    monetization, advertising revenue, or paid products without a signed commercial license or you got permission by me.</p>
+    
+                <p><strong>6. No Derivatives Without Permission.</strong> Creating fan games, clones, reskins, or "inspired
+                    by" versions using this code or assets is prohibited without permission.</p>
+    
+                <p><strong>7. Attribution.</strong> Any authorized use MUST include credit: "Originally created by RHGhunterSo" with a link to your website or profile.</p>
+    
+                <p><strong>8. No Warranty.</strong> The game is provided "as is" without warranty of any kind. The creator
+                    is not liable for any damages arising from use.</p>
+    
+                <p><strong>9. Enforcement.</strong> Violation of this license will result in immediate revocation of rights
+                    and may result in DMCA takedown requests or legal action.</p>
+    
+                <p style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);"><em>To request
+                        permission: Contact rhghunterbusiness@gmail.com. Permission is granted at the sole discretion of the
+                        creator.</em></p>
+            </div>
+            <button id="closeLicense"
+                style="margin-top: 16px; width: 100%; padding: 12px; background: var(--gold); color: #0a0e14; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">Close</button>
+        </div>
+    </div>
+    
+    <script>
+        (() => {
+            // ===== DATA =====
+            const DATA = {
+                realEstate: [
+                    { id: 'studio', name: 'Studio Apartment', icon: '🏢', cost: 50, income: 0.5 },
+                    { id: 'house', name: 'Small House', icon: '🏠', cost: 250, income: 2 },
+                    { id: 'duplex', name: 'Duplex', icon: '🏘️', cost: 1200, income: 10 },
+                    { id: 'complex', name: 'Apartment Complex', icon: '🏬', cost: 7500, income: 65 },
+                    { id: 'condo', name: 'Luxury Condo', icon: '🌃', cost: 50000, income: 450 },
+                    { id: 'mansion', name: 'Mansion', icon: '🏰', cost: 350000, income: 3200 },
+                    { id: 'skyscraper', name: 'Skyscraper', icon: '🏙️', cost: 2500000, income: 24000 },
+                    { id: 'resort', name: 'Island Resort', icon: '🏝️', cost: 18000000, income: 180000 },
+                    { id: 'spacehotel', name: 'Space Hotel', icon: '🛰️', cost: 140000000, income: 1400000 },
+                    { id: 'moonbase', name: 'Moon Base', icon: '🌕', cost: 1100000000, income: 11000000 },
+                    { id: 'orbital', name: 'Orbital City', icon: '🌌', cost: 9000000000, income: 90000000 },
+                    { id: 'dyson', name: 'Dyson Habitat', icon: '☀️', cost: 75000000000, income: 750000000 },
+                    { id: 'arcology', name: 'Arcology Tower', icon: '🏢', cost: 6e11, income: 6e9 },
+                    { id: 'terraform', name: 'Terraformed Valley', icon: '🌄', cost: 4.8e12, income: 4.8e10 },
+                    { id: 'atlantis', name: 'Atlantis Dome', icon: '🌊', cost: 3.8e13, income: 3.8e11 },
+                    { id: 'cloudcity', name: 'Cloud City', icon: '☁️', cost: 3e14, income: 3e12 },
+                    { id: 'megastructure', name: 'Ring World', icon: '🪐', cost: 2.4e15, income: 2.4e13 },
+                    { id: 'stellar', name: 'Stellar Nursery', icon: '✨', cost: 1.9e16, income: 1.9e14 },
+                    { id: 'galaxy', name: 'Galaxy Hub', icon: '🌌', cost: 1.5e17, income: 1.5e15 },
+                    { id: 'universe', name: 'Pocket Universe', icon: '🔮', cost: 1.2e18, income: 1.2e16 },
+                    { id: 'multiverse', name: 'Multiverse Estate', icon: '♾️', cost: 9.6e18, income: 9.6e16 },
+                    { id: 'nexus', name: 'Reality Nexus', icon: '🌀', cost: 7.7e19, income: 7.7e17 },
+                    { id: 'omni', name: 'Omniverse Plaza', icon: '🌐', cost: 6.2e20, income: 6.2e18 },
+                    { id: 'void', name: 'Void Palace', icon: '⚫', cost: 5e21, income: 5e19 },
+                    { id: 'creation', name: 'Creation Engine', icon: '💥', cost: 4e22, income: 4e20 },
+                    { id: 'eternity', name: 'Eternity Spire', icon: '⏳', cost: 3.2e23, income: 3.2e21 },
+                    { id: 'infinity', name: 'Infinity Complex', icon: '∞', cost: 2.6e24, income: 2.6e22 },
+                    { id: 'alpha', name: 'Alpha Point', icon: '🅰️', cost: 2.1e25, income: 2.1e23 },
+                    { id: 'omega_estate', name: 'Omega Estate', icon: 'Ω', cost: 1.7e26, income: 1.7e24 },
+                    { id: 'singularity_estate', name: 'Singularity Core', icon: '🕳️', cost: 1.4e27, income: 1.4e25 },
+                    { id: 'godhome', name: 'Godhome', icon: '👑', cost: 1.1e28, income: 1.1e26 },
+                    { id: 'source', name: 'The Source', icon: '💫', cost: 9e28, income: 9e26 },
+                ],
+                driving: [
+                    { id: 'bike', name: 'Bicycle Courier', icon: '🚲', cost: 100, income: 1 },
+                    { id: 'taxi', name: 'Taxi Cab', icon: '🚕', cost: 800, income: 7 },
+                    { id: 'van', name: 'Delivery Van', icon: '🚐', cost: 5000, income: 45 },
+                    { id: 'foodtruck', name: 'Food Truck', icon: '🚚', cost: 30000, income: 280 },
+                    { id: 'semi', name: 'Semi Truck', icon: '🚛', cost: 200000, income: 1900 },
+                    { id: 'limo', name: 'Limo Service', icon: '🚘', cost: 1500000, income: 15000 },
+                    { id: 'jet', name: 'Private Jet Charter', icon: '✈️', cost: 12000000, income: 120000 },
+                    { id: 'ship', name: 'Cargo Ship', icon: '🚢', cost: 95000000, income: 950000 },
+                    { id: 'train', name: 'Freight Train', icon: '🚆', cost: 750000000, income: 7500000 },
+                    { id: 'hyperloop', name: 'Hyperloop', icon: '🚄', cost: 6000000000, income: 60000000 },
+                    { id: 'rocket', name: 'Rocket Delivery', icon: '🚀', cost: 50000000000, income: 500000000 },
+                    { id: 'teleport', name: 'Teleport Network', icon: '🌀', cost: 400000000000, income: 4000000000 },
+                    { id: 'wormhole', name: 'Wormhole Taxi', icon: '🕳️', cost: 3.2e12, income: 3.2e10 },
+                    { id: 'warp', name: 'Warp Freighter', icon: '🌠', cost: 2.6e13, income: 2.6e11 },
+                    { id: 'stargate', name: 'Stargate Hub', icon: '⭕', cost: 2.1e14, income: 2.1e12 },
+                    { id: 'tesseract', name: 'Tesseract Courier', icon: '📦', cost: 1.7e15, income: 1.7e13 },
+                    { id: 'quantum_ferry', name: 'Quantum Ferry', icon: '⚛️', cost: 1.4e16, income: 1.4e14 },
+                    { id: 'neutrino', name: 'Neutrino Express', icon: '💨', cost: 1.1e17, income: 1.1e15 },
+                    { id: 'darkmatter', name: 'Dark Matter Hauler', icon: '🌑', cost: 9e17, income: 9e15 },
+                    { id: 'tachyon', name: 'Tachyon Runner', icon: '⚡', cost: 7.2e18, income: 7.2e16 },
+                    { id: 'chronos', name: 'Chronos Delivery', icon: '⏰', cost: 5.8e19, income: 5.8e17 },
+                    { id: 'voidship', name: 'Void Skipper', icon: '🚤', cost: 4.6e20, income: 4.6e18 },
+                    { id: 'dreamliner', name: 'Dreamliner', icon: '💭', cost: 3.7e21, income: 3.7e19 },
+                    { id: 'soul', name: 'Soul Transport', icon: '👻', cost: 3e22, income: 3e20 },
+                    { id: 'phoenix', name: 'Phoenix Wing', icon: '🔥', cost: 2.4e23, income: 2.4e21 },
+                    { id: 'leviathan', name: 'Leviathan Carrier', icon: '🐋', cost: 1.9e24, income: 1.9e22 },
+                    { id: 'titan', name: 'Titan Hauler', icon: '🗿', cost: 1.5e25, income: 1.5e23 },
+                    { id: 'celestial', name: 'Celestial Ark', icon: '👼', cost: 1.2e26, income: 1.2e24 },
+                    { id: 'eternal', name: 'Eternal Voyage', icon: '♾️', cost: 9.6e26, income: 9.6e24 },
+                    { id: 'origin', name: 'Origin Runner', icon: '🥚', cost: 7.7e27, income: 7.7e25 },
+                    { id: 'final', name: 'Final Transit', icon: '🏁', cost: 6.2e28, income: 6.2e26 },
+                    { id: 'absolute', name: 'Absolute Motion', icon: '💫', cost: 5e29, income: 5e27 },
+                ],
+                businesses: [
+                    { id: 'lemonade', name: 'Lemonade Stand', icon: '🍋', cost: 500, income: 4 },
+                    { id: 'coffee', name: 'Coffee Shop', icon: '☕', cost: 4000, income: 35 },
+                    { id: 'carwash', name: 'Car Wash', icon: '🧼', cost: 25000, income: 220 },
+                    { id: 'gym', name: 'Gym', icon: '💪', cost: 180000, income: 1600 },
+                    { id: 'startup', name: 'Tech Startup', icon: '💻', cost: 1200000, income: 11000 },
+                    { id: 'mall', name: 'Shopping Mall', icon: '🛍️', cost: 9000000, income: 85000 },
+                    { id: 'bank', name: 'Bank', icon: '🏦', cost: 75000000, income: 720000 },
+                    { id: 'conglomerate', name: 'Conglomerate', icon: '🌐', cost: 650000000, income: 6500000 },
+                    { id: 'casino', name: 'Casino', icon: '🎰', cost: 5500000000, income: 55000000 },
+                    { id: 'oil', name: 'Oil Company', icon: '🛢️', cost: 45000000000, income: 450000000 },
+                    { id: 'spacemine', name: 'Space Mining Corp', icon: '⛏️', cost: 380000000000, income: 3800000000 },
+                    { id: 'aiempire', name: 'AI Empire', icon: '🤖', cost: 3200000000000, income: 32000000000 },
+                    { id: 'galactic', name: 'Galactic Federation', icon: '👽', cost: 28000000000000, income: 280000000000 },
+                    { id: 'dimensional', name: 'Dimensional Trade', icon: '🌀', cost: 2.2e14, income: 2.2e12 },
+                    { id: 'timecorp', name: 'Time Corp', icon: '⏳', cost: 1.8e15, income: 1.8e13 },
+                    { id: 'soulmarket', name: 'Soul Market', icon: '💀', cost: 1.4e16, income: 1.4e14 },
+                    { id: 'dreaminc', name: 'Dream Inc.', icon: '💤', cost: 1.1e17, income: 1.1e15 },
+                    { id: 'memecorp', name: 'Meme Conglomerate', icon: '🐸', cost: 9e17, income: 9e15 },
+                    { id: 'voidcorp', name: 'Void Industries', icon: '⚫', cost: 7.2e18, income: 7.2e16 },
+                    { id: 'infinityco', name: 'Infinity Co.', icon: '♾️', cost: 5.8e19, income: 5.8e17 },
+                    { id: 'godcorp', name: 'God Corp', icon: '✝️', cost: 4.6e20, income: 4.6e18 },
+                    { id: 'creator', name: 'Creator LLC', icon: '🎨', cost: 3.7e21, income: 3.7e19 },
+                    { id: 'omni_corp', name: 'Omni Corp', icon: '🌐', cost: 3e22, income: 3e20 },
+                    { id: 'absolute_inc', name: 'Absolute Inc', icon: '💯', cost: 2.4e23, income: 2.4e21 },
+                    { id: 'prime', name: 'Prime Enterprise', icon: '🥇', cost: 1.9e24, income: 1.9e22 },
+                    { id: 'alpha_corp', name: 'Alpha Corp', icon: '🅰️', cost: 1.5e25, income: 1.5e23 },
+                    { id: 'omega_corp', name: 'Omega Corp', icon: 'Ω', cost: 1.2e26, income: 1.2e24 },
+                    { id: 'nexus_inc', name: 'Nexus Inc', icon: '🔗', cost: 9.6e26, income: 9.6e24 },
+                    { id: 'singularity_corp', name: 'Singularity Corp', icon: '🕳️', cost: 7.7e27, income: 7.7e25 },
+                    { id: 'eternity_llc', name: 'Eternity LLC', icon: '♾️', cost: 6.2e28, income: 6.2e26 },
+                    { id: 'origin_inc', name: 'Origin Inc', icon: '🌱', cost: 5e29, income: 5e27 },
+                    { id: 'final_corp', name: 'Final Corporation', icon: '🏁', cost: 4e30, income: 4e28 },
+                    { id: 'everything', name: 'Everything Company', icon: '🌌', cost: 3.2e31, income: 3.2e29 },
+                ],
+                tech: [
+                    { id: 'server', name: 'Home Server', icon: '🖥️', cost: 10000, income: 90 },
+                    { id: 'app', name: 'Mobile App', icon: '📱', cost: 75000, income: 700 },
+                    { id: 'cloud', name: 'Cloud Service', icon: '☁️', cost: 600000, income: 5800 },
+                    { id: 'saas', name: 'SaaS Platform', icon: '💾', cost: 5000000, income: 48000 },
+                    { id: 'ai_lab', name: 'AI Lab', icon: '🧪', cost: 40000000, income: 390000 },
+                    { id: 'quantum', name: 'Quantum Computer', icon: '⚛️', cost: 350000000, income: 3400000 },
+                    { id: 'neural', name: 'Neural Network', icon: '🧠', cost: 3000000000, income: 29000000 },
+                    { id: 'singularity_tech', name: 'Tech Singularity', icon: '🌐', cost: 25000000000, income: 245000000 },
+                    { id: 'matrioshka', name: 'Matrioshka Brain', icon: '🧠', cost: 2e11, income: 2e9 },
+                    { id: 'jupiter', name: 'Jupiter Brain', icon: '🪐', cost: 1.6e12, income: 1.6e10 },
+                    { id: 'dyson_swarm', name: 'Dyson Swarm', icon: '☀️', cost: 1.3e13, income: 1.3e11 },
+                    { id: 'stellar_engine', name: 'Stellar Engine', icon: '⭐', cost: 1e14, income: 1e12 },
+                    { id: 'galactic_net', name: 'Galactic Internet', icon: '🌌', cost: 8e14, income: 8e12 },
+                    { id: 'void_computer', name: 'Void Computer', icon: '⚫', cost: 6.4e15, income: 6.4e13 },
+                    { id: 'reality_code', name: 'Reality Code', icon: '💻', cost: 5.1e16, income: 5.1e14 },
+                    { id: 'simulation', name: 'Universe Simulator', icon: '🎮', cost: 4.1e17, income: 4.1e15 },
+                    { id: 'omninet', name: 'Omninet', icon: '🕸️', cost: 3.3e18, income: 3.3e16 },
+                    { id: 'thought', name: 'Pure Thought', icon: '💭', cost: 2.6e19, income: 2.6e17 },
+                    { id: 'concept', name: 'Concept Engine', icon: '💡', cost: 2.1e20, income: 2.1e18 },
+                    { id: 'platonic', name: 'Platonic Computer', icon: '📐', cost: 1.7e21, income: 1.7e19 },
+                    { id: 'akashic', name: 'Akashic Records', icon: '📚', cost: 1.4e22, income: 1.4e20 },
+                    { id: 'noosphere', name: 'Noosphere', icon: '🌐', cost: 1.1e23, income: 1.1e21 },
+                    { id: 'logos', name: 'Logos Machine', icon: '🔤', cost: 9e23, income: 9e21 },
+                    { id: 'monad', name: 'Monad Processor', icon: '·', cost: 7.2e24, income: 7.2e22 },
+                    { id: 'absolute_tech', name: 'Absolute Tech', icon: '♾️', cost: 5.8e25, income: 5.8e23 },
+                    { id: 'source_code', name: 'Source Code', icon: '</>', cost: 4.6e26, income: 4.6e24 },
+                    { id: 'prime_mover', name: 'Prime Mover', icon: '▶️', cost: 3.7e27, income: 3.7e25 },
+                    { id: 'unmoved', name: 'Unmoved Mover', icon: '⏸️', cost: 3e28, income: 3e26 },
+                ],
+                crypto: [
+                    { id: 'gpu', name: 'GPU Miner', icon: '🎮', cost: 25000, income: 220 },
+                    { id: 'rig', name: 'Mining Rig', icon: '⛏️', cost: 200000, income: 1850 },
+                    { id: 'farm', name: 'Crypto Farm', icon: '🏭', cost: 1600000, income: 15000 },
+                    { id: 'pool', name: 'Mining Pool', icon: '🏊', cost: 13000000, income: 125000 },
+                    { id: 'exchange', name: 'Crypto Exchange', icon: '💱', cost: 110000000, income: 1050000 },
+                    { id: 'defi', name: 'DeFi Protocol', icon: '🔗', cost: 900000000, income: 8700000 },
+                    { id: 'blockchain', name: 'Layer 1 Blockchain', icon: '🧱', cost: 7500000000, income: 72000000 },
+                    { id: 'web3', name: 'Web3 Empire', icon: '🕸️', cost: 62000000000, income: 600000000 },
+                    { id: 'dao', name: 'Galactic DAO', icon: '🏛️', cost: 5e11, income: 5e9 },
+                    { id: 'quantum_coin', name: 'Quantum Coin', icon: '⚛️', cost: 4e12, income: 4e10 },
+                    { id: 'dark_coin', name: 'Dark Energy Coin', icon: '🌑', cost: 3.2e13, income: 3.2e11 },
+                    { id: 'void_token', name: 'Void Token', icon: '🕳️', cost: 2.6e14, income: 2.6e12 },
+                    { id: 'soul_coin', name: 'Soul Coin', icon: '👻', cost: 2.1e15, income: 2.1e13 },
+                    { id: 'dream_coin', name: 'Dream Coin', icon: '💤', cost: 1.7e16, income: 1.7e14 },
+                    { id: 'time_token', name: 'Time Token', icon: '⏳', cost: 1.4e17, income: 1.4e15 },
+                    { id: 'reality_coin', name: 'Reality Coin', icon: '🌐', cost: 1.1e18, income: 1.1e16 },
+                    { id: 'concept_token', name: 'Concept Token', icon: '💡', cost: 9e18, income: 9e16 },
+                    { id: 'infinity_coin', name: 'Infinity Coin', icon: '♾️', cost: 7.2e19, income: 7.2e17 },
+                    { id: 'omni_coin', name: 'Omni Coin', icon: '🔄', cost: 5.8e20, income: 5.8e18 },
+                    { id: 'god_token', name: 'God Token', icon: '✨', cost: 4.6e21, income: 4.6e19 },
+                    { id: 'creator_coin', name: 'Creator Coin', icon: '🎨', cost: 3.7e22, income: 3.7e20 },
+                    { id: 'source_token', name: 'Source Token', icon: '💫', cost: 3e23, income: 3e21 },
+                    { id: 'absolute_coin', name: 'Absolute Coin', icon: '💯', cost: 2.4e24, income: 2.4e22 },
+                    { id: 'prime_token', name: 'Prime Token', icon: '🥇', cost: 1.9e25, income: 1.9e23 },
+                    { id: 'alpha_coin', name: 'Alpha Coin', icon: '🅰️', cost: 1.5e26, income: 1.5e24 },
+                    { id: 'omega_token', name: 'Omega Token', icon: 'Ω', cost: 1.2e27, income: 1.2e25 },
+                    { id: 'final_coin', name: 'Final Coin', icon: '🏁', cost: 9.6e27, income: 9.6e25 },
+                    { id: 'everything_token', name: 'Everything Token', icon: '🌌', cost: 7.7e28, income: 7.7e26 },
+                ],
+                upgrades: [
+                    { id: 'mouse', name: 'Better Mouse', cost: 200, icon: '🖱️', desc: '+$1 per click' },
+                    { id: 'golden', name: 'Golden Finger', cost: 2000, icon: '✨', desc: 'Click power x2' },
+                    { id: 'diamond', name: 'Diamond Clicker', cost: 50000, icon: '💎', desc: 'Click power x5' },
+                    { id: 'autoclick', name: 'Auto-Clicker', cost: 5000, icon: '🤖', desc: '1 auto-click/sec' },
+                    { id: 'license', name: 'Real Estate License', cost: 10000, icon: '📜', desc: 'Properties +25%' },
+                    { id: 'manager', name: 'Property Manager', cost: 100000, icon: '👔', desc: 'Properties +50%' },
+                    { id: 'realtor', name: 'Realtor Network', cost: 2500000, icon: '🏘️', desc: 'Properties +100%' },
+                    { id: 'developer', name: 'Mega Developer', cost: 50000000, icon: '🏗️', desc: 'Properties +200%' },
+                    { id: 'tycoon_re', name: 'Real Estate Tycoon', cost: 2000000000, icon: '🏛️', desc: 'Properties +500%' },
+                    { id: 'gps', name: 'Fleet GPS', cost: 50000, icon: '📡', desc: 'Driving +25%' },
+                    { id: 'ai', name: 'Logistics AI', cost: 400000, icon: '🧠', desc: 'Driving +50%' },
+                    { id: 'autopilot', name: 'Autopilot Fleet', cost: 8000000, icon: '🛩️', desc: 'Driving +100%' },
+                    { id: 'quantumdrive', name: 'Quantum Drive', cost: 150000000, icon: '⚛️', desc: 'Driving +200%' },
+                    { id: 'tycoon_dr', name: 'Transport Magnate', cost: 5000000000, icon: '🚀', desc: 'Driving +500%' },
+                    { id: 'mba', name: 'MBA Degree', cost: 250000, icon: '🎓', desc: 'Businesses +25%' },
+                    { id: 'synergy', name: 'Corporate Synergy', cost: 2000000, icon: '🤝', desc: 'Businesses +50%' },
+                    { id: 'monopoly', name: 'Monopoly', cost: 15000000, icon: '🎩', desc: 'Businesses +100%' },
+                    { id: 'globalcorp', name: 'Global Corp', cost: 300000000, icon: '🌍', desc: 'Businesses +200%' },
+                    { id: 'tycoon_bus', name: 'Business Overlord', cost: 10000000000, icon: '💼', desc: 'Businesses +500%' },
+                    { id: 'tech_boost1', name: 'Silicon Valley', cost: 500000, icon: '💻', desc: 'Tech +100%' },
+                    { id: 'tech_boost2', name: 'Tech Monopoly', cost: 25000000, icon: '📡', desc: 'Tech +300%' },
+                    { id: 'crypto_boost1', name: 'HODL Strategy', cost: 2000000, icon: '🪙', desc: 'Crypto +100%' },
+                    { id: 'crypto_boost2', name: 'Whale Status', cost: 100000000, icon: '🐋', desc: 'Crypto +300%' },
+                    { id: 'compound', name: 'Compound Interest', cost: 1000000, icon: '📈', desc: 'All income +10%' },
+                    { id: 'insider', name: 'Market Insider', cost: 10000000, icon: '🕵️', desc: 'All income +25%' },
+                    { id: 'automation', name: 'Full Automation', cost: 100000000, icon: '⚙️', desc: 'All income +50%' },
+                    { id: 'singularity', name: 'Economic Singularity', cost: 1000000000, icon: '💫', desc: 'All income +100%' },
+                    { id: 'omega', name: 'Omega Protocol', cost: 50000000000, icon: '♾️', desc: 'All income +500%' },
+                    { id: 're_boost6', name: 'Planetary Zoning', cost: 5e11, icon: '🪐', desc: 'Properties +1000%' },
+                    { id: 're_boost7', name: 'Galactic Deeds', cost: 4e13, icon: '🌌', desc: 'Properties +2000%' },
+                    { id: 're_boost8', name: 'Universal Landlord', cost: 3e15, icon: '👑', desc: 'Properties +5000%' },
+                    { id: 'dr_boost6', name: 'Hyperspace Lanes', cost: 2e12, icon: '🌠', desc: 'Driving +1000%' },
+                    { id: 'dr_boost7', name: 'Infinite Routes', cost: 1.5e14, icon: '♾️', desc: 'Driving +2000%' },
+                    { id: 'dr_boost8', name: 'Omnipresent Fleet', cost: 1e16, icon: '🌐', desc: 'Driving +5000%' },
+                    { id: 'bus_boost6', name: 'Multiverse Merger', cost: 8e12, icon: '🌀', desc: 'Businesses +1000%' },
+                    { id: 'bus_boost7', name: 'Reality Acquisition', cost: 6e14, icon: '💼', desc: 'Businesses +2000%' },
+                    { id: 'bus_boost8', name: 'Existence Inc.', cost: 4e16, icon: '🌌', desc: 'Businesses +5000%' },
+                    { id: 'click_boost4', name: 'Platinum Finger', cost: 1e9, icon: '🤍', desc: 'Click power x20' },
+                    { id: 'click_boost5', name: 'God Click', cost: 1e12, icon: '⚡', desc: 'Click power x100' },
+                    { id: 'click_boost6', name: 'Big Bang Click', cost: 1e15, icon: '💥', desc: 'Click power x1000' },
+                    { id: 'auto2', name: 'Auto-Clicker Mk2', cost: 5e10, icon: '🤖', desc: '+5 auto-clicks/sec' },
+                    { id: 'auto3', name: 'Auto-Clicker Mk3', cost: 5e13, icon: '🦾', desc: '+25 auto-clicks/sec' },
+                    { id: 'global_boost6', name: 'Transcendence', cost: 1e12, icon: '🕊️', desc: 'All income +1000%' },
+                    { id: 'global_boost7', name: 'Ascension', cost: 1e15, icon: '⬆️', desc: 'All income +5000%' },
+                    { id: 'global_boost8', name: 'Godhood', cost: 1e18, icon: '✨', desc: 'All income +20000%' },
+                    { id: 'tech_boost3', name: 'Post-Singularity', cost: 1e14, icon: '🧠', desc: 'Tech +1000%' },
+                    { id: 'crypto_boost3', name: 'Bitcoin God', cost: 5e14, icon: '₿', desc: 'Crypto +1000%' },
+                    { id: 'prestige_boost', name: 'Investor Insight', cost: 1e10, icon: '📊', desc: 'Prestige bonus +1% per point' },
+                    { id: 'click_flat2', name: 'Heavy Mouse', cost: 1e6, icon: '🖱️', desc: '+$100 per click' },
+                    { id: 'click_flat3', name: 'Hammer Click', cost: 1e9, icon: '🔨', desc: '+$10,000 per click' },
+                    { id: 'click_flat4', name: 'Nuke Click', cost: 1e12, icon: '💣', desc: '+$1M per click' },
+                    { id: 'click_boost7', name: 'Titanium Finger', cost: 1e18, icon: '🦾', desc: 'Click power x10,000' },
+                    { id: 'click_boost8', name: 'Quantum Tap', cost: 1e21, icon: '⚛️', desc: 'Click power x100,000' },
+                    { id: 'click_boost9', name: 'Reality Click', cost: 1e24, icon: '🌌', desc: 'Click power x1,000,000' },
+                    { id: 'superclick', name: 'Superclick', cost: 1e27, icon: '💥', desc: 'Click power x10,000,000' },
+                    { id: 'auto4', name: 'Auto-Clicker Mk4', cost: 5e16, icon: '🤖', desc: '+100 auto-clicks/sec' },
+                    { id: 'auto5', name: 'Auto-Clicker Mk5', cost: 5e19, icon: '🦿', desc: '+1,000 auto-clicks/sec' },
+                    { id: 'click_sync', name: 'Click Synergy', cost: 5e15, icon: '🔗', desc: 'Clicks gain +1% of your $/sec' },
+                ],
+            };
+
+            const ACHIEVEMENTS = [
+                // === EARNINGS ===
+                { id: 'first1', name: 'First Dollar', desc: 'Earn $1 total', icon: '💵' },
+                { id: 'pocket', name: 'Pocket Change', desc: 'Earn $1,000', icon: '💰' },
+                { id: 'tenk', name: 'Five Digits', desc: 'Earn $10,000', icon: '💸' },
+                { id: 'hundredk', name: 'Six Figures', desc: 'Earn $100,000', icon: '💳' },
+                { id: 'million', name: 'Millionaire', desc: 'Earn $1M', icon: '💎' },
+                { id: 'tenmill', name: 'Multi-Millionaire', desc: 'Earn $10M', icon: '🏦' },
+                { id: 'hundredmill', name: 'Centimillionaire', desc: 'Earn $100M', icon: '🏛️' },
+                { id: 'billion', name: 'Billionaire', desc: 'Earn $1B', icon: '👑' },
+                { id: 'tenbillion', name: 'Deca-Billionaire', desc: 'Earn $10B', icon: '🌟' },
+                { id: 'hundredbillion', name: 'Centibillionaire', desc: 'Earn $100B', icon: '🔥' },
+                { id: 'trillion', name: 'Trillionaire', desc: 'Earn $1T', icon: '🌌' },
+                { id: 'tentril', name: 'Ten Trillion', desc: 'Earn $10T', icon: '🪐' },
+                { id: 'hundredtril', name: 'Hundred Trillion', desc: 'Earn $100T', icon: '☄️' },
+                { id: 'quadrillion', name: 'Quadrillionaire', desc: 'Earn $1Qa', icon: '♾️' },
+                { id: 'quintillion', name: 'Quintillionaire', desc: 'Earn $1Qi total', icon: '🔮' },
+                { id: 'sextillion', name: 'Sextillionaire', desc: 'Earn $1Sx total', icon: '🌌' },
+                { id: 'septillion', name: 'Septillionaire', desc: 'Earn $1Sp total', icon: '💫' },
+                { id: 'octillion', name: 'Octillionaire', desc: 'Earn $1Oc total', icon: '🔥' },
+                { id: 'nonillion', name: 'Nonillionaire', desc: 'Earn $1No total', icon: '♾️' },
+
+                // === CLICKS ===
+                { id: 'click10', name: 'Click Starter', desc: '10 clicks', icon: '👆' },
+                { id: 'click100', name: 'Clicker', desc: '100 clicks', icon: '👇' },
+                { id: 'click1k', name: 'Click Master', desc: '1,000 clicks', icon: '⚡' },
+                { id: 'mpc10k', name: 'Click Addict', desc: '10,000 clicks', icon: '🔥' },
+                { id: 'click15k', name: 'Finger Workout', desc: '15,000 clicks', icon: '👆' },
+                { id: 'click25k', name: 'Click Enthusiast', desc: '25,000 clicks', icon: '⚡' },
+                { id: 'click50k', name: 'Click Veteran', desc: '50,000 clicks', icon: '💪' },
+                { id: 'click75k', name: 'Click Obsessed', desc: '75,000 clicks', icon: '🔥' },
+                { id: 'mpc100k', name: 'Click Maniac', desc: '100,000 clicks', icon: '💥' },
+                { id: 'mpc1m', name: 'Click Legend', desc: '1,000,000 clicks', icon: '🌪️' },
+                { id: 'mpc10m', name: 'Click God', desc: '10,000,000 clicks', icon: '👑' },
+                { id: 'mpc100m', name: 'Click Deity', desc: '100,000,000 clicks', icon: '✨' },
+                { id: 'mpc1b', name: 'Click Universe', desc: '1,000,000,000 clicks', icon: '🌠' },
+
+                // === ASSETS TOTAL ===
+                { id: 'asset1', name: 'First Asset', desc: 'Own 1 total', icon: '📦' },
+                { id: 'asset10', name: 'Starter Portfolio', desc: 'Own 10 total', icon: '📊' },
+                { id: 'empire', name: 'Empire Builder', desc: 'Own 50 total', icon: '🏙️' },
+                { id: 'asset100', name: 'Century Club', desc: 'Own 100 total', icon: '💯' },
+                { id: 'collector', name: 'Asset Collector', desc: 'Own 250 total', icon: '🗂️' },
+                { id: 'asset500', name: 'Half Thousand', desc: 'Own 500 total', icon: '🏗️' },
+                { id: 'asset1k', name: 'Thousandaire', desc: 'Own 1,000 total', icon: '🏢' },
+                { id: 'asset2500', name: 'Tycoon', desc: 'Own 2,500 total', icon: '🌆' },
+                { id: 'asset5k', name: 'Magnate', desc: 'Own 5,000 total', icon: '🌃' },
+                { id: 'hoarder10k', name: 'Stockpiler', desc: 'Own 10,000 total assets', icon: '🗄️' },
+                { id: 'hoarder100k', name: 'Planetary Owner', desc: 'Own 100,000 total assets', icon: '🪐' },
+                { id: 'hoarder500k', name: 'Galactic Hoarder', desc: 'Own 500,000 total assets', icon: '🌌' },
+                { id: 'hoarder1m', name: 'Universal Emperor', desc: 'Own 1,000,000 total assets', icon: '♾️' },
+
+                // === REAL ESTATE ===
+                { id: 'house1', name: 'House Warming', desc: 'Own 1 property', icon: '🏠' },
+                { id: 'landlord', name: 'Landlord', desc: 'Own 10 properties', icon: '🏘️' },
+                { id: 'mogul', name: 'Property Mogul', desc: 'Own 100 properties', icon: '🏢' },
+                { id: 're500', name: 'Real Estate King', desc: 'Own 500 properties', icon: '🏰' },
+                { id: 're1000', name: 'Planet Owner', desc: 'Own 1,000 properties', icon: '🌍' },
+
+                // === DRIVING ===
+                { id: 'car1', name: 'First Wheels', desc: 'Own 1 vehicle', icon: '🚲' },
+                { id: 'fleet10', name: 'Fleet Commander', desc: 'Own 10 vehicles', icon: '🚚' },
+                { id: 'tycoon', name: 'Transport Tycoon', desc: 'Own 100 vehicles', icon: '✈️' },
+                { id: 'dr500', name: 'Logistics Emperor', desc: 'Own 500 vehicles', icon: '🚀' },
+                { id: 'dr1000', name: 'Galactic Fleet', desc: 'Own 1,000 vehicles', icon: '🚀' },
+
+                // === BUSINESSES ===
+                { id: 'biz1', name: 'Entrepreneur', desc: 'Own 1 business', icon: '🍋' },
+                { id: 'biz10', name: 'Business Owner', desc: 'Own 10 businesses', icon: '☕' },
+                { id: 'magnate', name: 'Business Magnate', desc: 'Own 100 businesses', icon: '🏭' },
+                { id: 'bus500', name: 'Corporate Overlord', desc: 'Own 500 businesses', icon: '💼' },
+                { id: 'bus1000', name: 'Universal Conglomerate', desc: 'Own 1,000 businesses', icon: '🌐' },
+
+                // === TECH & CRYPTO ===
+                { id: 'tech1', name: 'Techie', desc: 'Own 1 tech', icon: '💻' },
+                { id: 'tech100', name: 'Silicon Valley', desc: 'Own 100 tech', icon: '🧪' },
+                { id: 'tech500', name: 'Tech Overlord', desc: 'Own 500 tech', icon: '🤖' },
+                { id: 'crypto1', name: 'Miner', desc: 'Own 1 crypto', icon: '⛏️' },
+                { id: 'crypto100', name: 'Crypto Whale', desc: 'Own 100 crypto', icon: '🐋' },
+                { id: 'crypto500', name: 'Crypto Deity', desc: 'Own 500 crypto', icon: '₿' },
+
+                // === SPEED ($/sec) ===
+                { id: 'speed100', name: 'Hustler', desc: 'Reach $100/sec', icon: '💨' },
+                { id: 'speed1k', name: 'Grinder', desc: 'Reach $1K/sec', icon: '⚡' },
+                { id: 'speed', name: 'Speed Hustler', desc: 'Reach $10K/sec', icon: '🚀' },
+                { id: 'speed100k', name: 'Rocket', desc: 'Reach $100K/sec', icon: '🛫' },
+                { id: 'speed2', name: 'Money Printer', desc: 'Reach $1M/sec', icon: '🖨️' },
+                { id: 'speed10m', name: 'Cash Fountain', desc: 'Reach $10M/sec', icon: '⛲' },
+                { id: 'speed100m', name: 'Economic Engine', desc: 'Reach $100M/sec', icon: '🏭' },
+                { id: 'speed1b', name: 'Billion Per Second', desc: 'Reach $1B/sec', icon: '💫' },
+                { id: 'speed10b', name: 'Ten Billion/sec', desc: 'Reach $10B/sec', icon: '🚀' },
+                { id: 'speed100b', name: 'Hundred Billion/sec', desc: 'Reach $100B/sec', icon: '🌠' },
+                { id: 'speed1t', name: 'Trillion/sec', desc: 'Reach $1T/sec', icon: '💥' },
+                { id: 'speed1qa', name: 'Quadrillion/sec', desc: 'Reach $1Qa/sec', icon: '🪐' },
+                { id: 'speed1qi', name: 'Quintillion/sec', desc: 'Reach $1Qi/sec', icon: '🌌' },
+
+                // === CLICK POWER ===
+                { id: 'golden', name: 'Golden Touch', desc: 'Reach $100 per click', icon: '🪙' },
+                { id: 'click1000', name: 'Midas Click', desc: 'Reach $1,000/click', icon: '✨' },
+                { id: 'click10k', name: 'Diamond Finger', desc: 'Reach $10K/click', icon: '💎' },
+                { id: 'clickgod', name: 'God Click', desc: 'Reach $100K/click', icon: '👋' },
+                { id: 'click1m', name: 'Million Click', desc: 'Reach $1M/click', icon: '💰' },
+                { id: 'click10m', name: 'Ten Million Click', desc: 'Reach $10M/click', icon: '💎' },
+                { id: 'click100m', name: 'Hundred Million Click', desc: 'Reach $100M/click', icon: '👑' },
+                { id: 'click1b2', name: 'Billion Click', desc: 'Reach $1B/click', icon: '🌟' },
+
+                // === PRESTIGE ===
+                { id: 'prestige', name: 'Prestige Pioneer', desc: 'Prestige once', icon: '🌟' },
+                { id: 'prestige5', name: 'Serial Prestiger', desc: 'Prestige 5 times', icon: '🔄' },
+                { id: 'prestige10', name: 'Reborn', desc: 'Prestige 10 times', icon: '🔁' },
+                { id: 'prestige25', name: 'Ascended', desc: 'Prestige 25 times', icon: '⬆️' },
+                { id: 'prestige50', name: 'Transcendent', desc: 'Prestige 50 times', icon: '🔮' },
+                { id: 'prestige100', name: 'Immortal', desc: 'Prestige 100 times', icon: '♾️' },
+                { id: 'prestige200', name: 'Eternal', desc: 'Prestige 200 times', icon: '♾️' },
+                { id: 'prestige500', name: 'Beyond', desc: 'Prestige 500 times', icon: '🔱' },
+
+                // === TIME PLAYED ===
+                { id: 'minute1', name: 'Getting Started', desc: 'Play 1 minute', icon: '⏳' },
+                { id: 'minute10', name: 'Committed', desc: 'Play 10 minutes', icon: '⌛' },
+                { id: 'veteran', name: 'Veteran', desc: 'Play 1 hour', icon: '⏱️' },
+                { id: 'workaholic', name: 'Workaholic', desc: 'Play 10 hours', icon: '🦉' },
+                { id: 'noLife', name: 'No Life', desc: 'Play 100 hours', icon: '💀' },
+                { id: 'hour1000', name: 'Addicted', desc: 'Play 1,000 hours', icon: '🧟' },
+
+                // === LIFETIME & SPECIALS ===
+                { id: 'lifetime1t', name: 'Lifetime Trillion', desc: '$1T lifetime earned', icon: '⏳' },
+                { id: 'lifetime1qa', name: 'Lifetime Quadrillion', desc: '$1Qa lifetime', icon: '⌛' },
+                { id: 'upgrade_all', name: 'Upgrade Master', desc: 'Buy all upgrades', icon: '🔧' },
+                { id: 'own_source', name: 'Source Owner', desc: 'Own The Source property', icon: '💫' },
+                { id: 'own_absolute', name: 'Absolute Motion', desc: 'Own Absolute Motion vehicle', icon: '🏁' },
+                { id: 'own_everything', name: 'Everything Inc', desc: 'Own Everything Company', icon: '🌌' },
+                { id: 'own_unmoved', name: 'First Cause', desc: 'Own Unmoved Mover tech', icon: '▶️' },
+                { id: 'own_everything_token', name: 'Token of Everything', desc: 'Own Everything Token crypto', icon: '🪙' },
+
+                // === SYNERGY ===
+                { id: 'synergy_re', name: 'Property Complete', desc: 'Own all Real Estate types', icon: '🏘️' },
+                { id: 'synergy_dr', name: 'Fleet Complete', desc: 'Own all Driving types', icon: '🚗' },
+                { id: 'synergy_bus', name: 'Business Complete', desc: 'Own all Business types', icon: '🏪' },
+                { id: 'synergy_tech', name: 'Tech Complete', desc: 'Own all Tech types', icon: '💻' },
+                { id: 'synergy_crypto', name: 'Crypto Complete', desc: 'Own all Crypto types', icon: '🪙' },
+                { id: 'synergy_all', name: 'True Completionist', desc: 'Complete all 5 synergies', icon: '🌈' },
+
+                // === MASTER ===
+                { id: 'master', name: 'Completionist', desc: 'Unlock all other achievements', icon: '🏆' },
+            ];
+
+            const EVENTS = [
+                { id: 'boom', name: 'Market Boom', desc: '+200% income', icon: '📈', multIncome: 3, duration: 30000 },
+                { id: 'tax', name: 'Tax Season', desc: '-15% income', icon: '📉', multIncome: 0.85, duration: 20000 },
+                { id: 'viral', name: 'Viral Trend', desc: '+500% clicks', icon: '🔥', multClick: 6, duration: 15000 },
+            ];
+
+            // ===== STATE =====
+            const defaultState = {
+                money: 0, totalEarned: 0, lifetimeEarned: 0, clicks: 0,
+                timePlayed: 0, startTime: Date.now(), highestMps: 0,
+                prestigePoints: 0, buyMode: 1, sound: true,
+                items: {}, upgradesOwned: {}, achievements: {},
+                event: null, eventEnds: 0, nextEvent: 0, eventLog: [],
+                tutorialSeen: false, _autoAcc: 0
+            };
+            let state = { ...defaultState };
+
+            const $ = id => document.getElementById(id);
+            let currentTab = 'realEstate';
+            let audioCtx;
+
+            // ===== UTILS =====
+            function formatMoney(n) {
+                if (!isFinite(n)) return '$∞';
+                if (n < 0) return '-' + formatMoney(-n);
+                const suffixes = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
+                let i = 0; let v = n;
+                while (v >= 1000 && i < suffixes.length - 1) { v /= 1000; i++; }
+                if (i === 0) return '$' + Math.floor(v).toLocaleString();
+                const abs = v >= 100 ? Math.floor(v) : v >= 10 ? Math.floor(v * 10) / 10 : Math.floor(v * 100) / 100;
+                return '$' + abs.toString().replace(/\.0$/, '') + suffixes[i];
+            }
+            const formatSmall = n => n >= 10 ? Math.floor(n).toLocaleString() : n.toFixed(1);
+            const formatTime = s => {
+                const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+                return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+            };
+
+            function beep(freq = 800, dur = 0.04, vol = 0.08) {
+                if (!state.sound) return;
+                try {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.type = 'triangle'; o.frequency.value = freq;
+                    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                    o.start(); o.stop(audioCtx.currentTime + dur);
+                } catch { }
+            }
+
+            function toast(text, icon = '💰') {
+                const c = $('toast-container');
+                const t = document.createElement('div');
+                t.className = 'toast';
+                t.innerHTML = `<span class="toast-icon">${icon}</span><span>${text}</span>`;
+                c.appendChild(t);
+                setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; }, 2800);
+                setTimeout(() => t.remove(), 3200);
+            }
+
+            function logEvent(msg) {
+                state.eventLog.unshift({ t: Date.now(), msg });
+                if (state.eventLog.length > 20) state.eventLog.pop();
+                renderLog();
+            }
+
+            function renderLog() {
+                $('eventLog').innerHTML = state.eventLog.map(e =>
+                    `<div><span class="time">${new Date(e.t).toLocaleTimeString()}</span>${e.msg}</div>`
+                ).join('');
+            }
+
+            // ===== CALCULATIONS =====
+            function getOwned(id) { return state.items[id] || 0 }
+            function getCost(item, owned) { return item.cost * Math.pow(1.15, owned); }
+
+            function getMultipliers() {
+                const u = state.upgradesOwned;
+                const m = { re: 1, dr: 1, bus: 1, tech: 1, crypto: 1, global: 1, clickFlat: 0, clickMult: 1, autoClicks: 1 };
+                if (u.mouse) m.clickFlat += 1;
+                if (u.click_flat2) m.clickFlat += 100;
+                if (u.click_flat3) m.clickFlat += 10000;
+                if (u.click_flat4) m.clickFlat += 1000000;
+                if (u.golden) m.clickMult *= 2;
+                if (u.diamond) m.clickMult *= 5;
+                if (u.click_boost4) m.clickMult *= 20;
+                if (u.click_boost5) m.clickMult *= 100;
+                if (u.click_boost6) m.clickMult *= 1000;
+                if (u.click_boost7) m.clickMult *= 10000;
+                if (u.click_boost8) m.clickMult *= 100000;
+                if (u.click_boost9) m.clickMult *= 1000000;
+                if (u.superclick) m.clickMult *= 10000000;
+                if (u.autoclick) m.autoClicks += 1;
+                if (u.auto2) m.autoClicks += 5;
+                if (u.auto3) m.autoClicks += 25;
+                if (u.click_sync) m.clickPercent = 0.01;
+                if (u.license) m.re *= 1.25; if (u.manager) m.re *= 1.5; if (u.realtor) m.re *= 2; if (u.developer) m.re *= 3; if (u.tycoon_re) m.re *= 6;
+                if (u.re_boost6) m.re *= 11; if (u.re_boost7) m.re *= 21; if (u.re_boost8) m.re *= 51;
+                if (u.gps) m.dr *= 1.25; if (u.ai) m.dr *= 1.5; if (u.autopilot) m.dr *= 2; if (u.quantumdrive) m.dr *= 3; if (u.tycoon_dr) m.dr *= 6;
+                if (u.dr_boost6) m.dr *= 11; if (u.dr_boost7) m.dr *= 21; if (u.dr_boost8) m.dr *= 51;
+                if (u.mba) m.bus *= 1.25; if (u.synergy) m.bus *= 1.5; if (u.monopoly) m.bus *= 2; if (u.globalcorp) m.bus *= 3; if (u.tycoon_bus) m.bus *= 6;
+                if (u.bus_boost6) m.bus *= 11; if (u.bus_boost7) m.bus *= 21; if (u.bus_boost8) m.bus *= 51;
+                if (u.tech_boost1) m.tech = (m.tech || 1) * 2; if (u.tech_boost2) m.tech *= 4; if (u.tech_boost3) m.tech *= 11;
+                if (u.crypto_boost1) m.crypto = (m.crypto || 1) * 2; if (u.crypto_boost2) m.crypto *= 4; if (u.crypto_boost3) m.crypto *= 11;
+                if (u.compound) m.global *= 1.1; if (u.insider) m.global *= 1.25; if (u.automation) m.global *= 1.5; if (u.singularity) m.global *= 2; if (u.omega) m.global *= 6;
+                if (u.global_boost6) m.global *= 11; if (u.global_boost7) m.global *= 51; if (u.global_boost8) m.global *= 201;
+                let prestigeBonus = 0.05; if (u.prestige_boost) prestigeBonus = 0.06;
+                const prestige = 1 + state.prestigePoints * prestigeBonus;
+                m.global *= prestige; m.clickMult *= prestige;
+                if (state.event) { if (state.event.multIncome) m.global *= state.event.multIncome; if (state.event.multClick) m.clickMult *= state.event.multClick; }
+                return m;
+            }
+
+            function calculateMPS() {
+                const m = getMultipliers();
+                let re = 0, dr = 0, bus = 0;
+                DATA.realEstate.forEach(it => re += getOwned(it.id) * it.income);
+                DATA.driving.forEach(it => dr += getOwned(it.id) * it.income);
+                DATA.businesses.forEach(it => bus += getOwned(it.id) * it.income);
+                let tech = 0, crypto = 0;
+DATA.tech.forEach(it => tech += getOwned(it.id) * it.income);
+DATA.crypto.forEach(it => crypto += getOwned(it.id) * it.income);
+return (re * m.re + dr * m.dr + bus * m.bus + tech * (m.tech||1) + crypto * (m.crypto||1)) * m.global;
+            }
+            function calculateMPC() {
+                const m = getMultipliers();
+                const base = (1 + m.clickFlat) * m.clickMult;
+                const percentBonus = m.clickPercent > 0 ? calculateMPS() * m.clickPercent : 0;
+                return base + percentBonus;
+            }
+
+            function totals() {
+                let re = 0, dr = 0, bus = 0;
+                DATA.realEstate.forEach(i => re += getOwned(i.id));
+                DATA.driving.forEach(i => dr += getOwned(i.id));
+                DATA.businesses.forEach(i => bus += getOwned(i.id));
+                return { re, dr, bus, total: re + dr + bus };
+            }
+
+            // ===== GAME ACTIONS =====
+            function createFloater(amount) {
+                const f = document.createElement('div');
+                f.className = 'floater';
+                f.textContent = '+' + formatMoney(amount);
+                f.style.left = (50 + (Math.random() - 0.5) * 30) + '%';
+                $('floaters').appendChild(f);
+                setTimeout(() => f.remove(), 950);
+            }
+
+            function createParticles() {
+                const btn = $('hustleBtn').getBoundingClientRect();
+                const cx = btn.left + btn.width / 2, cy = btn.top + btn.height / 2;
+                for (let i = 0; i < 9; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'particle';
+                    p.style.left = cx + 'px'; p.style.top = cy + 'px';
+                    const ang = Math.random() * Math.PI * 2, dist = 40 + Math.random() * 60;
+                    p.style.setProperty('--x', Math.cos(ang) * dist + 'px');
+                    p.style.setProperty('--y', Math.sin(ang) * dist + 'px');
+                    $('particles').appendChild(p);
+                    setTimeout(() => p.remove(), 780);
+                }
+            }
+
+            function doClick(isAuto = false) {
+                const mpc = calculateMPC();
+                state.money += mpc;
+                state.totalEarned += mpc;
+                state.lifetimeEarned += mpc;
+                if (!isAuto) {
+                    state.clicks++;
+                    createFloater(mpc);
+                    createParticles();
+                    $('hustleBtn').classList.add('clicked');
+                    setTimeout(() => $('hustleBtn').classList.remove('clicked'), 100);
+                    beep(720 + Math.random() * 140, 0.035, 0.07);
+                    checkAchievements();
+                }
+                updateQuick();
+            }
+
+            function calcMaxAffordable(item, owned) {
+                let money = state.money, count = 0, max = 10000;
+                while (count < max) {
+                    const cost = getCost(item, owned + count);
+                    if (money >= cost) { money -= cost; count++; } else break;
+                }
+                return count;
+            }
+
+            function buy(category, id) {
+                if (category === 'upgrades') {
+                    const up = DATA.upgrades.find(u => u.id === id);
+                    if (!up || state.upgradesOwned[id]) return;
+                    if (state.money >= up.cost) {
+                        state.money -= up.cost;
+                        state.upgradesOwned[id] = true;
+                        beep(1200, 0.05, 0.09); toast(`Bought ${up.name}`, up.icon); logEvent(`⚡ Purchased ${up.name}`);
+                        checkAchievements(); renderItems(); updateQuick();
+                    } else { beep(200, 0.06, 0.05); }
+                    return;
+                }
+                const item = DATA[category].find(i => i.id === id);
+                if (!item) return;
+                const owned = getOwned(id);
+                let qty = state.buyMode === 'max' ? calcMaxAffordable(item, owned) : state.buyMode;
+                qty = Math.min(qty, 1000);
+                if (qty <= 0) return;
+                let total = 0; for (let i = 0; i < qty; i++) total += getCost(item, owned + i);
+                if (state.money >= total) {
+                    state.money -= total;
+                    state.items[id] = owned + qty;
+                    beep(900, 0.03, 0.07);
+                    if (qty > 1) toast(`Bought ${qty}x ${item.name}`, item.icon);
+                    checkAchievements(); renderItems(); updateQuick();
+                } else { beep(200, 0.06, 0.05); }
+            }
+            window.buyItem = (cat, id) => buy(cat, id);
+            window.buyUpgrade = id => buy('upgrades', id);
+
+            // ===== EVENTS =====
+            function triggerEvent() {
+                const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+                state.event = ev;
+                state.eventEnds = Date.now() + ev.duration;
+                state.nextEvent = Date.now() + 120000 + Math.random() * 60000;
+                toast(`${ev.name}! ${ev.desc}`, ev.icon);
+                logEvent(`${ev.icon} ${ev.name} started`);
+                updateEventBanner();
+            }
+            function endEvent() {
+                if (!state.event) return;
+                logEvent(`${state.event.icon} ${state.event.name} ended`);
+                state.event = null;
+                updateEventBanner();
+            }
+            function updateEventBanner() {
+                const b = $('eventBanner');
+                if (state.event) {
+                    const left = Math.max(0, Math.ceil((state.eventEnds - Date.now()) / 1000));
+                    b.innerHTML = `<div class="event">${state.event.icon} ${state.event.name}: ${state.event.desc} (${left}s)</div>`;
+                    b.style.display = 'block';
+                } else b.style.display = 'none';
+            }
+
+            // ===== ACHIEVEMENTS =====
+            function checkAchievements() {
+                const t = totals();
+                const checks = {
+                    // earnings
+                    first1: state.lifetimeEarned >= 1,
+                    pocket: state.lifetimeEarned >= 1e3,
+                    tenk: state.lifetimeEarned >= 1e4,
+                    hundredk: state.lifetimeEarned >= 1e5,
+                    million: state.lifetimeEarned >= 1e6,
+                    tenmill: state.lifetimeEarned >= 1e7,
+                    hundredmill: state.lifetimeEarned >= 1e8,
+                    billion: state.lifetimeEarned >= 1e9,
+                    tenbillion: state.lifetimeEarned >= 1e10,
+                    hundredbillion: state.lifetimeEarned >= 1e11,
+                    trillion: state.lifetimeEarned >= 1e12,
+                    tentril: state.lifetimeEarned >= 1e13,
+                    hundredtril: state.lifetimeEarned >= 1e14,
+                    quadrillion: state.lifetimeEarned >= 1e15,
+                    quintillion: state.lifetimeEarned >= 1e18,
+                    sextillion: state.lifetimeEarned >= 1e21,
+                    septillion: state.lifetimeEarned >= 1e24,
+                    octillion: state.lifetimeEarned >= 1e27,
+                    nonillion: state.lifetimeEarned >= 1e30,
+                    // clicks
+                    click10: state.clicks >= 10,
+                    click100: state.clicks >= 100,
+                    click1k: state.clicks >= 1e3,
+                    mpc10k: state.clicks >= 1e4,
+                    click15k: state.clicks >= 15000,
+                    click25k: state.clicks >= 25000,
+                    click50k: state.clicks >= 50000,
+                    click75k: state.clicks >= 75000,
+                    mpc100k: state.clicks >= 1e5,
+                    mpc1m: state.clicks >= 1e6,
+                    mpc10m: state.clicks >= 1e7,
+                    mpc100m: state.clicks >= 1e8,
+                    mpc1b: state.clicks >= 1e9,
+                    // assets
+                    asset1: t.total >= 1,
+                    asset10: t.total >= 10,
+                    empire: t.total >= 50,
+                    asset100: t.total >= 100,
+                    collector: t.total >= 250,
+                    asset500: t.total >= 500,
+                    asset1k: t.total >= 1000,
+                    asset2500: t.total >= 2500,
+                    asset5k: t.total >= 5000,
+                    hoarder10k: t.total >= 10000,
+                    horader100k: t.total >= 100000,
+                    hoarder500k: t.total >= 500000,
+                    hoarder1m: t.total >= 1000000,
+                    // categories
+                    house1: t.re >= 1,
+                    landlord: t.re >= 10,
+                    mogul: t.re >= 100,
+                    re500: t.re >= 500,
+                    re1000: t.re >= 1000,
+                    car1: t.dr >= 1,
+                    fleet10: t.dr >= 10,
+                    tycoon: t.dr >= 100,
+                    dr500: t.dr >= 500,
+                    dr1000: t.dr >= 1000,
+                    biz1: t.bus >= 1,
+                    biz10: t.bus >= 10,
+                    magnate: t.bus >= 100,
+                    bus500: t.bus >= 500,
+                    bus1000: t.bus >= 1000,
+                    tech1: t.tech >= 1,
+                    tech100: t.tech >= 100,
+                    tech500: t.tech >= 500,
+                    crypto1: t.crypto >= 1,
+                    crypto100: t.crypto >= 100,
+                    crypto500: t.crypto >= 500,
+                    // speed
+                    speed100: state.highestMps >= 100,
+                    speed1k: state.highestMps >= 1e3,
+                    speed: state.highestMps >= 1e4,
+                    speed100k: state.highestMps >= 1e5,
+                    speed2: state.highestMps >= 1e6,
+                    speed10m: state.highestMps >= 1e7,
+                    speed100m: state.highestMps >= 1e8,
+                    speed1b: state.highestMps >= 1e9,
+                    speed10b: state.highestMps >= 1e10,
+                    speed100b: state.highestMps >= 1e11,
+                    speed1t: state.highestMps >= 1e12,
+                    speed1qa: state.highestMps >= 1e15,
+                    speed1qi: state.highestMps >= 1e18,
+                    // click power
+                    golden: calculateMPC() >= 100,
+                    click1000: calculateMPC() >= 1e3,
+                    click10k: calculateMPC() >= 1e4,
+                    clickgod: calculateMPC() >= 1e5,
+                    click1m: calculateMPC() >= 1e6,
+                    click10m: calculateMPC() >= 1e7,
+                    click100m: calculateMPC() >= 1e8,
+                    click1b2: calculateMPC() >= 1e9,
+                    // prestige
+                    prestige: state.prestigePoints >= 1,
+                    prestige5: state.prestigePoints >= 5,
+                    prestige10: state.prestigePoints >= 10,
+                    prestige25: state.prestigePoints >= 25,
+                    prestige50: state.prestigePoints >= 50,
+                    prestige100: state.prestigePoints >= 100,
+                    prestige200: state.prestigePoints >= 200,
+                    prestige500: state.prestigePoints >= 500,
+                    // time
+                    minute1: state.timePlayed >= 60,
+                    minute10: state.timePlayed >= 600,
+                    veteran: state.timePlayed >= 3600,
+                    workaholic: state.timePlayed >= 36000,
+                    noLife: state.timePlayed >= 360000,
+                    hour1000: state.timePlayed >= 3600000,
+                    // lifetime & specials
+                    lifetime1t: state.lifetimeEarned >= 1e12,
+                    lifetime1qa: state.lifetimeEarned >= 1e15,
+                    upgrade_all: Object.keys(state.upgradesOwned).length >= DATA.upgrades.length,
+                    own_source: getOwned('source') >= 1,
+                    own_absolute: getOwned('absolute') >= 1,
+                    own_everything: getOwned('everything') >= 1,
+                    own_unmoved: getOwned('unmoved') >= 1,
+                    own_everything_token: getOwned('everything_token') >= 1,
+                    // synergy
+                    synergy_re: DATA.realEstate.every(it => getOwned(it.id) >= 1),
+                    synergy_dr: DATA.driving.every(it => getOwned(it.id) >= 1),
+                    synergy_bus: DATA.businesses.every(it => getOwned(it.id) >= 1),
+                    synergy_tech: DATA.tech.every(it => getOwned(it.id) >= 1),
+                    synergy_crypto: DATA.crypto.every(it => getOwned(it.id) >= 1),
+                    synergy_all: ['synergy_re', 'synergy_dr', 'synergy_bus', 'synergy_tech', 'synergy_crypto'].every(id => state.achievements[id]),
+                    master: false,
+                };
+                let unlocked = 0;
+                ACHIEVEMENTS.forEach(a => {
+                    if (a.id !== 'master' && checks[a.id] && !state.achievements[a.id]) {
+                        state.achievements[a.id] = true;
+                        toast(`Achievement: ${a.name}`, a.icon);
+                        logEvent(`🏆 ${a.name}`);
+                        beep(1400, 0.08, 0.1);
+                    }
+                    if (state.achievements[a.id]) unlocked++;
+                });
+
+                // MASTER ACHIEVEMENT CHECK
+                const totalOthers = ACHIEVEMENTS.length - 1;
+                const othersUnlocked = Object.keys(state.achievements).filter(id => id !== 'master' && state.achievements[id]).length;
+                if (othersUnlocked >= totalOthers && !state.achievements['master']) {
+                    state.achievements['master'] = true;
+                    toast(`Achievement: Completionist`, '🏆');
+                    logEvent(`🏆 Completionist - All achievements unlocked!`);
+                    unlocked++;
+                    // epic celebration
+                    for (let i = 0; i < 20; i++) setTimeout(() => createParticles(), i * 100);
+                }
+
+                $('achCount').textContent = `${unlocked}/${ACHIEVEMENTS.length}`;
+                renderAchievements();
+            }
+
+            function renderAchievements() {
+                $('achievementsGrid').innerHTML = ACHIEVEMENTS.map(a => {
+                    const un = state.achievements[a.id];
+                    return `<div class="ach ${un ? 'unlocked' : ''}" title="${a.name}: ${a.desc}">${a.icon}</div>`;
+                }).join('');
+            }
+
+            // ===== RENDER =====
+            function renderItems() {
+                const list = $('itemsList');
+                let html = '';
+                if (currentTab === 'upgrades') {
+                    DATA.upgrades.forEach(up => {
+                        const owned = !!state.upgradesOwned[up.id];
+                        const can = state.money >= up.cost && !owned;
+                        html += `<div class="item ${owned ? 'owned' : ''} ${can ? '' : 'locked'}" onclick="buyUpgrade('${up.id}')">
+          <div class="item-icon">${up.icon}</div>
+          <div class="item-main">
+            <div class="item-top"><span class="item-name">${up.name}</span></div>
+            <div class="item-desc">${up.desc}</div>
+          </div>
+          <div class="item-cost">${owned ? 'OWNED' : formatMoney(up.cost)}</div>
+        </div>`;
+                    });
+                } else {
+                    const arr = DATA[currentTab];
+                    arr.forEach(it => {
+                        const owned = getOwned(it.id);
+                        const nextCost = getCost(it, owned);
+                        const affordable = state.money >= nextCost;
+                        const incomeEach = it.income;
+                        const incomeTotal = owned * it.income;
+                        const pct = Math.min(100, state.money / nextCost * 100);
+                        html += `<div class="item ${affordable ? '' : 'locked'}" onclick="buyItem('${currentTab}','${it.id}')">
+          <div class="item-icon">${it.icon}</div>
+          <div class="item-main">
+            <div class="item-top"><span class="item-name">${it.name}</span><span class="owned">x${owned.toLocaleString()}</span></div>
+            <div class="item-stats">+$${formatSmall(incomeEach)}/s • Total $${formatSmall(incomeTotal)}/s</div>
+            <div class="progress"><div style="width:${pct}%"></div></div>
+          </div>
+          <div class="item-cost">${formatMoney(nextCost)}</div>
+        </div>`;
+                    });
+                }
+                list.innerHTML = html;
+            }
+
+            function updateQuick() {
+                $('money').textContent = formatMoney(state.money);
+                $('mps').textContent = formatMoney(calculateMPS()) + '/sec';
+                $('mpc').textContent = formatMoney(calculateMPC()) + '/click';
+                $('totalEarned').textContent = formatMoney(state.totalEarned);
+                $('prestigeBonus').textContent = `+${state.prestigePoints * 5}%`;
+                $('prestigePointsDisplay').textContent = state.prestigePoints;
+            }
+
+            function updateStats() {
+                $('timePlayed').textContent = formatTime(state.timePlayed);
+                $('totalClicks').textContent = state.clicks.toLocaleString();
+                $('buildingsOwned').textContent = totals().total.toLocaleString();
+                $('highestMps').textContent = formatMoney(state.highestMps) + '/s';
+                $('lifetimeEarned').textContent = formatMoney(state.lifetimeEarned);
+            }
+
+            // ===== SAVE/LOAD =====
+            function save() {
+                try {
+                    const toSave = { ...state, startTime: Date.now() };
+                    localStorage.setItem('idleRichV2', JSON.stringify(toSave));
+                    toast('Game saved', '💾');
+                } catch { }
+            }
+            function load() {
+                try {
+                    const raw = localStorage.getItem('idleRichV2');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        state = { ...defaultState, ...parsed, startTime: Date.now() };
+                        // ensure defaults
+                        [...DATA.realEstate, ...DATA.driving, ...DATA.businesses].forEach(it => {
+                            if (state.items[it.id] == null) state.items[it.id] = 0;
+                        });
+                        if (!state.nextEvent) state.nextEvent = Date.now() + 130000;
+                        logEvent('💾 Game loaded');
+                    } else {
+                        // first time init
+                        [...DATA.realEstate, ...DATA.driving, ...DATA.businesses].forEach(it => state.items[it.id] = 0);
+                        state.nextEvent = Date.now() + 130000;
+                    }
+                } catch (e) { console.error(e) }
+            }
+
+            // ===== PRESTIGE =====
+            function openPrestige() {
+                const lifetime = state.lifetimeEarned;
+                const currentPoints = state.prestigePoints;
+                // cost doubles each prestige: 1M, 2M, 4M, 8M...
+                const nextCost = 1000000 * Math.pow(2, currentPoints);
+                const canPrestige = lifetime >= nextCost;
+                const pointsYouGet = canPrestige ? 1 : 0;
+
+                document.getElementById('prestigeModal').classList.remove('hidden');
+                document.getElementById('currentPrestige').textContent = currentPoints;
+                document.getElementById('prestigeGain').textContent = pointsYouGet;
+                document.getElementById('prestigeBonusNext').textContent = '+' + (pointsYouGet * 5) + '%';
+
+                const button = document.getElementById('prestigeConfirm');
+
+                if (!canPrestige) {
+                    button.disabled = true;
+                    const needed = nextCost - lifetime;
+                    button.textContent = 'Need $' + Math.max(0, Math.ceil(needed)).toLocaleString() + ' more';
+                } else {
+                    button.disabled = false;
+                    button.textContent = 'PRESTIGE NOW (+1)';
+                }
+            }
+
+            function doPrestige() {
+                const nextCost = 1000000 * Math.pow(2, state.prestigePoints);
+                if (state.lifetimeEarned < nextCost) return;
+                
+                state.prestigePoints += 1;
+                state.money = 0;
+                state.totalEarned = 0;
+                state.items = {};
+                [...DATA.realEstate, ...DATA.driving, ...DATA.businesses, ...DATA.tech, ...DATA.crypto].forEach(it => state.items[it.id] = 0);
+                state.upgradesOwned = {};
+                state.highestMps = 0;
+                state.event = null;
+                $('prestigeModal').classList.add('hidden');
+                toast(`Prestiged! ${state.prestigePoints} points (+${state.prestigePoints * 5}%)`, '🌟');
+                logEvent(`🌟 Prestiged to ${state.prestigePoints} Investor Points - next costs $${(nextCost*2).toLocaleString()}`);
+                beep(1600, 0.12);
+                save();
+                updateQuick(); renderItems(); checkAchievements();
+            }
+
+            // ===== INIT =====
+            function switchTab(tab) {
+                currentTab = tab;
+                document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+                renderItems();
+            }
+            function setBuyMode(mode) {
+                state.buyMode = mode === 'max' ? 'max' : parseInt(mode);
+                document.querySelectorAll('#buyModes button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+            }
+
+            function init() {
+                load();
+                renderAchievements();
+                renderItems();
+                renderLog();
+                updateQuick();
+                updateStats();
+                checkAchievements();
+
+                if (!state.tutorialSeen) $('tutorial').classList.remove('hidden');
+
+                // listeners
+                $('hustleBtn').addEventListener('click', () => doClick());
+                $('hustleBtn').addEventListener('touchstart', e => { e.preventDefault(); doClick(); }, { passive: false });
+                $('saveBtn').onclick = save;
+                $('soundBtn').onclick = () => { state.sound = !state.sound; $('soundBtn').textContent = state.sound ? '🔊' : '🔇'; save(); };
+                $('soundBtn').textContent = state.sound ? '🔊' : '🔇';
+                $('exitBtn').onclick = () => { window.location.href = '../games'; };
+                $('licenseBtn').onclick = () => { $('licenseModal').classList.remove('hidden'); };
+                $('closeLicense').onclick = () => { $('licenseModal').classList.add('hidden'); };
+                // 3-second hold to reset
+                let resetHoldTimer = null;
+                let resetHoldSeconds = 0;
+
+                function startResetHold() {
+                    const btn = $('resetBtn');
+                    resetHoldSeconds = 3;
+                    btn.textContent = `Hold 3s...`;
+                    btn.style.background = '#ef4444';
+
+                    resetHoldTimer = setInterval(() => {
+                        resetHoldSeconds--;
+                        if (resetHoldSeconds > 0) {
+                            btn.textContent = `Hold ${resetHoldSeconds}s...`;
+                        } else {
+                            clearInterval(resetHoldTimer);
+                            btn.textContent = '♻️';
+                            btn.style.background = '';
+
+                            // ACTUAL RESET
+                            if (!confirm('FINAL WARNING - Wipe everything?')) return;
+
+                            window.removeEventListener('beforeunload', save);
+                            window.onbeforeunload = null;
+
+                            try {
+                                localStorage.clear();
+                                sessionStorage.clear();
+                            } catch (e) { }
+
+                            state = {
+                                money: 0, totalEarned: 0, lifetimeEarned: 0, clicks: 0,
+                                timePlayed: 0, startTime: Date.now(), highestMps: 0,
+                                prestigePoints: 0, buyMode: 1, sound: true,
+                                items: {}, upgradesOwned: {}, achievements: {},
+                                event: null, eventEnds: 0, nextEvent: Date.now() + 60000,
+                                eventLog: [], tutorialSeen: false, _autoAcc: 0
+                            };
+
+                            try { localStorage.setItem('idleRichV2', JSON.stringify(state)); } catch (e) { }
+                            location.href = location.pathname + '?wiped=' + Date.now();
+                        }
+                    }, 1000);
+                }
+
+                function cancelResetHold() {
+                    if (resetHoldTimer) {
+                        clearInterval(resetHoldTimer);
+                        resetHoldTimer = null;
+                        $('resetBtn').textContent = '♻️';
+                        $('resetBtn').style.background = '';
+                    }
+                }
+
+                // Attach hold listeners
+                $('resetBtn').onmousedown = startResetHold;
+                $('resetBtn').ontouchstart = (e) => { e.preventDefault(); startResetHold(); };
+                $('resetBtn').onmouseup = cancelResetHold;
+                $('resetBtn').onmouseleave = cancelResetHold;
+                $('resetBtn').ontouchend = cancelResetHold;
+                $('resetBtn').ontouchcancel = cancelResetHold;
+
+                // Remove old click
+                $('resetBtn').onclick = null;
+                document.querySelectorAll('.tab').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+                document.querySelectorAll('#buyModes button').forEach(b => b.onclick = () => setBuyMode(b.dataset.mode));
+                $('tutorialStart').onclick = () => { state.tutorialSeen = true; $('tutorial').classList.add('hidden'); save(); };
+                $('prestigeBtn').onclick = openPrestige;
+                $('prestigeClose').onclick = () => $('prestigeModal').classList.add('hidden');
+                $('prestigeConfirm').onclick = doPrestige;
+
+                window.addEventListener('keydown', e => {
+                    if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); doClick(); }
+                    if (e.key >= '1' && e.key <= '4') { const tabs = ['realEstate', 'driving', 'businesses', 'upgrades']; switchTab(tabs[+e.key - 1]); }
+                    if (e.key.toLowerCase() === 'b') setBuyMode('max');
+                    if (e.key.toLowerCase() === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); }
+                });
+
+                window.addEventListener('beforeunload', save);
+            }
+
+            // ===== GAME LOOP =====
+            let last = performance.now(), uiAcc = 0, itemAcc = 0;
+            function tick(now) {
+                const delta = Math.min(0.25, (now - last) / 1000);
+                last = now;
+                state.timePlayed += delta;
+
+                // income
+                const mps = calculateMPS();
+                const inc = mps * delta;
+                state.money += inc;
+                state.totalEarned += inc;
+                state.lifetimeEarned += inc;
+                if (mps > state.highestMps) state.highestMps = mps;
+
+                // auto clicker
+                if (state.upgradesOwned.autoclick) {
+                    state._autoAcc += delta;
+                    while (state._autoAcc >= 1) {
+                        state._autoAcc -= 1;
+                        doClick(true);
+                    }
+                }
+
+                // events
+                if (state.event && now >= state.eventEnds) endEvent();
+                if (!state.event && now >= state.nextEvent) triggerEvent();
+
+                uiAcc += delta; itemAcc += delta;
+                if (uiAcc > 0.1) { uiAcc = 0; updateQuick(); updateStats(); updateEventBanner(); }
+                if (itemAcc > 0.35) { itemAcc = 0; renderItems(); }
+
+                requestAnimationFrame(tick);
+            }
+
+            init();
+            requestAnimationFrame(tick);
+            setInterval(() => save(true), 300000);
+            setInterval(checkAchievements, 2000);
+        })();
+    </script>
+</body>
+
+</html>
