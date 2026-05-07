@@ -30,52 +30,94 @@ let shopItems = [
     // --- EARLY GAME ---
     { id: 'script', name: 'Auto-Script', baseCost: 15, bps: 1, bpc: 0, owned: 0 },
     { id: 'mouse', name: 'Ergonomic Mouse', baseCost: 25, bps: 0, bpc: 1, owned: 0 },
-    { id: 'phish', name: "Phishing Campaign", baseCost: 50, bps: 4, bpc: 0, owned: 0 },
+    { id: 'phish', name: 'Phishing Campaign', baseCost: 50, bps: 4, bpc: 0, owned: 0 },
+    { id: 'wifi', name: 'Wardriving Rig', baseCost: 75, bps: 6, bpc: 0, owned: 0 },
     { id: 'proxy', name: 'Proxy Server', baseCost: 100, bps: 10, bpc: 0, owned: 0 },
     { id: 'keyboard', name: 'Mechanical Keyboard', baseCost: 150, bps: 0, bpc: 5, owned: 0 },
+    { id: 'brute', name: 'Brute Force Suite', baseCost: 165, bps: 8, bpc: 0, owned: 0 },
     { id: 'pc', name: 'Stronger PC', baseCost: 180, bps: 10, bpc: 10, owned: 0 },
     { id: 'iprip', name: 'IP Rip', baseCost: 200, bps: 15, bpc: 0, owned: 0 },
     { id: 'keylog', name: 'Keylogger Drone', baseCost: 300, bps: 25, bpc: 0, owned: 0 },
-    { id: 'ducky', name: 'USB Rubber Ducky', baseCost: 500, bps: 40, bpc: 0, owned: 0 }, // NEW
+    { id: 'ducky', name: 'USB Rubber Ducky', baseCost: 500, bps: 40, bpc: 0, owned: 0 },
     { id: 'sql', name: 'SQL Injector', baseCost: 750, bps: 55, bpc: 0, owned: 0 },
     { id: 'botnet', name: 'Botnet Cluster', baseCost: 1100, bps: 80, bpc: 0, owned: 0 },
-    { id: 'router', name: 'Rogue Wi-Fi Hotspot', baseCost: 2000, bps: 130, bpc: 0, owned: 0 }, // NEW
+    { id: 'pwn', name: 'Pwned Database', baseCost: 1400, bps: 110, bpc: 0, owned: 0 },
+    { id: 'router', name: 'Rogue Wi-Fi Hotspot', baseCost: 2000, bps: 130, bpc: 0, owned: 0 },
+    { id: 'scam', name: 'Gift Card Scraper', baseCost: 2800, bps: 165, bpc: 0, owned: 0 },
     
     // --- MID GAME ---
     { id: 'ransom', name: 'Ransomware Worm', baseCost: 3500, bps: 200, bpc: 0, owned: 0 },
     { id: 'crypto', name: 'Crypto Hijacker', baseCost: 9000, bps: 550, bpc: 0, owned: 0 },
-    { id: 'insider', name: 'Corporate Insider', baseCost: 15000, bps: 900, bpc: 0, owned: 0 }, // NEW
+    { id: 'insider', name: 'Corporate Insider', baseCost: 15000, bps: 900, bpc: 0, owned: 0 },
     { id: 'zeroday', name: 'Zero-Day Exploit', baseCost: 25000, bps: 1500, bpc: 0, owned: 0 },
+    { id: 'sim', name: 'SIM Swapping Ring', baseCost: 45000, bps: 2800, bpc: 0, owned: 0 },
     { id: 'darkweb', name: 'Dark Web Node', baseCost: 65000, bps: 4000, bpc: 0, owned: 0 },
+    { id: 'atm', name: 'ATM Skimming Netword', baseCost: 95000, bps: 6500, bpc: 0, owned: 0 },
+    { id: 'exchange', name: 'Crypto Exchange Breach', baseCost: 125000, bps: 8200, bpc: 0, owned: 0 },
     { id: 'backdoor', name: 'Silicon Valley Backdoor', baseCost: 150000, bps: 10000, bpc: 0, owned: 0 },
+    { id: 'logic', name: 'Logic Bomb Payload', baseCost: 185000, bps: 14000, bpc: 0, owned: 0 },
+    { id: 'botnet2', name: 'Mirai-Variant Botnet', baseCost: 275000, bps: 18000, bpc: 0, owned: 0 },
     { id: 'farm', name: 'Offshore Server Farm', baseCost: 400000, bps: 28000, bpc: 0, owned: 0 },
+    { id: 'miner', name: 'ASIC Mining Rack', baseCost: 700000, bps: 52000, bpc: 0, owned: 0 },
     { id: 'cloud', name: 'Cloud Subversion', baseCost: 1000000, bps: 75000, bpc: 0, owned: 0 },
+    { id: 'iot', name: 'IoT Botnet Slave-Grinder', baseCost: 1600000, bps: 120000, bpc: 0,owned: 0 },
     { id: 'deepfake', name: 'Deepfake Propaganda', baseCost: 2500000, bps: 200000, bpc: 0, owned: 0 },
+    { id: 'biometric', name: 'Biometric Identity Farm', baseCost: 3200000, bps: 260000, bpc: 0, owned: 0 },
+    { id: 'blockchain', name: '51% Chain Attack', baseCost: 4500000, bps: 350000, bpc: 0, owned: 0 },
+    { id: 'stinger', name: 'Cell Tower Stingray', baseCost: 6200000, bps: 480000, bpc: 0, owned: 0},
     { id: 'cable', name: 'Submarine Cable Tap', baseCost: 8000000, bps: 600000, bpc: 0, owned: 0 },
     { id: 'satellite', name: 'Satellite Uplink Override', baseCost: 25000000, bps: 1800000, bpc: 0, owned: 0 },
+    { id: 'smart', name: 'Smart City Grid-Lock', baseCost: 15000000, bps: 1200000, bpc: 0, owned: 0 },
+    { id: 'super', name: 'Stolen Supercomputer', baseCost: 45000000, bps: 3500000, bpc: 0, owned: 0 },
     
     // --- LATE GAME ---
     { id: 'quantum', name: 'Quantum Decryptor', baseCost: 85000000, bps: 6000000, bpc: 0, owned: 0 },
+    { id: 'tax', name: 'National Tax Database Hack', baseCost: 180000000, bps: 13000000, bpc: 0, owned: 0 },
+    { id: 'intel', name: 'Intelligence Agency Leak', baseCost: 240000000, bps: 17500000, bpc: 0, owned: 0 },
     { id: 'bank', name: 'Central Bank Siphon', baseCost: 300000000, bps: 22000000, bpc: 0, owned: 0 },
+    { id: 'mainframe', name: 'Legacy Bank Mainframe', baseCost: 450000000, bps: 32000000, bpc: 0, owned: 0 },
+    { id: 'ballot', name: 'Election Rigging Algorithm', baseCost: 600000000, bps: 45000000, bpc: 0, owned: 0 },
     { id: 'emp', name: 'EMP Grid Sabotage', baseCost: 1000000000, bps: 80000000, bpc: 0, owned: 0 },
+    { id: 'blackout', name: 'Nation-Wide Blackout', baseCost: 2200000000, bps: 180000000, bpc: 0, owned: 0 },
     { id: 'military', name: 'Military Mainframe', baseCost: 4000000000, bps: 350000000, bpc: 0, owned: 0 },
+    { id: 'spy', name: 'Global Spy Satellite Net', baseCost: 8500000000, bps: 850000000, bpc: 0, owned: 0 },
     { id: 'ai', name: 'Sentient Malware', baseCost: 15000000000, bps: 1500000000, bpc: 0, owned: 0 },
+    { id: 'propaganda', name: 'AI Propaganda Machine', baseCost: 25000000000, bps: 2800000000, bpc: 0, owned: 0 },
     { id: 'neural', name: 'Neural Network Overload', baseCost: 60000000000, bps: 7000000000, bpc: 0, owned: 0 },
+    { id: 'ghost', name: 'Ghost Wi-Fi Mesh', baseCost: 85000000000, bps: 12000000000, bpc: 0, owned: 0 },
+    { id: 'quantum2', name: 'Quantum Neural Bridge', baseCost: 120000000000, bps: 18000000000, bpc: 0, owned: 0 },
+    { id: 'governance', name: 'Global Governance Exploit', baseCost: 160000000000, bps: 25000000000, bpc: 0, owned: 0 },
     { id: 'laser', name: 'Orbital Laser Syndicate', baseCost: 250000000000, bps: 35000000000, bpc: 0, owned: 0 },
+    { id: 'oil', name: 'Oil Pipeline Override', baseCost: 400000000000, bps: 60000000000, bpc: 0, owned: 0 },
+    { id: 'stock', name: 'Global Stock Market Crash', baseCost: 550000000000, bps: 85000000000, bpc: 0, owned: 0 },
+    { id: 'commodities', name: 'Commodities Market Manipulation', baseCost: 775000000000, bps: 125000000000, bpc: 0, owned: 0 },
     { id: 'dyson', name: 'Planetary Dyson Matrix', baseCost: 1000000000000, bps: 180000000000, bpc: 0, owned: 0 },
     { id: 'matrix', name: 'Reality Distortion Engine', baseCost: 5000000000000, bps: 1000000000000, bpc: 0, owned: 0 },
     { id: 'internet', name: 'Entire Internet', baseCost: 10000000000000, bps: 65000000000000, bpc: 0, owned: 0 },
 
     // --- THE NEW ENDGAME (INTERGALACTIC HACKING) ---
     { id: 'lunar', name: 'Lunar Data Center', baseCost: 50000000000000, bps: 400000000000000, bpc: 0, owned: 0 },
+    { id: 'neptune', name: 'Neptunian Ice-Server', baseCost: 100000000000000, bps: 800000000000000, bpc: 0, owned: 0 },
     { id: 'mars', name: 'Martian Rover Hack', baseCost: 250000000000000, bps: 2500000000000000, bpc: 0, owned: 0 },
+    { id: 'belt', name: 'Asteroid Mining Botnet', baseCost: 750000000000000, bps: 6500000000000000, bpc: 0, owned: 0 },
     { id: 'solar', name: 'Interplanetary Grid', baseCost: 1500000000000000, bps: 18000000000000000, bpc: 0, owned: 0 },
     { id: 'alien', name: 'Alien Tech Reverse-Engineering', baseCost: 10000000000000000, bps: 150000000000000000, bpc: 0, owned: 0 },
+    { id: 'wormhole', name: 'Wormhole Data Bridge', baseCost: 35000000000000000, bps: 600000000000000000, bpc: 0, owned: 0 },
     { id: 'stellar', name: 'Stellar Engine Siphon', baseCost: 75000000000000000, bps: 1200000000000000000, bpc: 0, owned: 0 },
     { id: 'galactic', name: 'Galactic Mainframe', baseCost: 500000000000000000, bps: 9000000000000000000, bpc: 0, owned: 0 },
     { id: 'blackhole', name: 'Black Hole Computronium', baseCost: 5000000000000000000, bps: 100000000000000000000, bpc: 0, owned: 0 },
+    { id: 'pulsar', name: 'Pulsar Signal Hijack', baseCost: 25000000000000000000, bps: 350000000000000000000, bpc: 0, owned: 0 },
     { id: 'multiverse', name: 'Multiverse Node', baseCost: 50000000000000000000, bps: 1500000000000000000000, bpc: 0, owned: 0 },
-    { id: 'simulation', name: 'Simulation Root Access', baseCost: 1000000000000000000000, bps: 40000000000000000000000, bpc: 0, owned: 0 }
+    { id: 'nebula', name: 'Nebula Cloud Compute', baseCost: 150000000000000000000, bps: 2500000000000000000000, bpc: 0, owned: 0 },
+    { id: 'quasars', name: 'Quasar Power Relay', baseCost: 15000000000000000000000, bps: 350000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'simulation', name: 'Simulation Root Access', baseCost: 1000000000000000000000, bps: 40000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'void', name: 'Void-Space Data Siphon', baseCost: 15000000000000000000000, bps: 120000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'dimension', name: '5th Dimension Node', baseCost: 250000000000000000000000, bps: 6500000000000000000000000, bpc: 0, owned: 0},
+    { id: 'escape', name: 'Escaping The Matrix', baseCost: 100000000000000000000000, bps: 700000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'source', name: 'The Universal Source Code', baseCost: 750000000000000000000000, bps: 6000000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'entropy', name: 'Entropy Reversal Engine', baseCost: 5000000000000000000000000, bps: 180000000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'omega', name: 'The Omega Point', baseCost: 50000000000000000000000000, bps: 450000000000000000000000000, bpc: 0, owned: 0 },
+    { id: 'reboot', name: 'Reality Reboot Command', baseCost: 500000000000000000000000000, bps: 4500000000000000000000000000, bpc: 0, owned: 0 }
 ];
 
 // --- SYSTEM AUDIO ENGINE ---
@@ -467,46 +509,94 @@ function updateUI() {
     // Update the raget based on your progress
     let targetDisplay = document.getElementById('target-name');
     if (targetDisplay) {
-        if (bytes >= 100000000000000000000000000) { // 1 Nonillion
+        if (bytes >= 1e39) { // 1 Duodecillion
+            targetDisplay.innerText = "Target: Post-Universal Transcendence";
+        } else if (bytes >= 1e36) { // 1 Undecillion
+            targetDisplay.innerText = "Target: Rewriting The Simulation";
+        } else if (bytes >= 1e33) { // 1 Decillion
+            targetDisplay.innerText = "Target: The Simulation Source Code";
+        } else if (bytes >= 500e30) { // 500 Nonillion
+            targetDisplay.innerText = "Target: Multiversal Entropy Loop";
+        } else if (bytes >= 1e30) { // 1 Nonillion
             targetDisplay.innerText = "Target: Escaping Reality";
-        } else if (bytes >= 1000000000000000000000000) { // 1 Octillion
-            targetDisplay.innterText = "Target: The Matrix Core";
-        } else if (bytes >= 10000000000000000000000) { // 1 Septillion
-            targetDisplay.innerText = "Target: The Multiverse"
-        } else if (bytes >= 100000000000000000000) { // 1 Sextillion
-            targetDisplay.innerText = "Target: Dimension Rift Creator";
-        } else if (bytes >= 1000000000000000000) { // 1 Quintillion
-            targetDisplay.innerText = "Target: The Universe";
-        } else if (bytes >= 1000000000000000) { // 1 Quadrillion
-            targetDisplay.innerText = "Target: Alien Technology";
-        } else if (bytes >= 1000000000000000) { // 1 Quadrillion
-            targetDisplay.innerText = "Target: Alien Spaceships";
-        } else if (bytes >= 500000000000000) { // 500 Trillion
-            targetDisplay.innerText = "Target: The World";
-        } else if (bytes >= 1000000000000) { // 1 Trillion
+        } else if (bytes >= 100e27) { // 100 Octillion
+            targetDisplay.innerText = "Target: Dimension 0 Root Access";
+        } else if (bytes >= 1e27) { // 1 Octillion
             targetDisplay.innerText = "Target: The Matrix Core";
-        } else if (bytes >= 1000000000000) { // 1 Trillion
+        } else if (bytes >= 500e24) { // 500 Septillion
+            targetDisplay.innerText = "Target: Timeline Paradox Synchronizer";
+        } else if (bytes >= 1e24) { // 1 Septillion
+            targetDisplay.innerText = "Target: The Multiverse";
+        } else if (bytes >= 100e21) { // 100 Sextillion
+            targetDisplay.innerText = "Target: Galactic Supercluster Mainframe";
+        } else if (bytes >= 1e21) { // 1 Sextillion
+            targetDisplay.innerText = "Target: Dimension Rift Creator";
+        } else if (bytes >= 10e18) { // 10 Quintillion
+            targetDisplay.innerText = "Target: Interstellar Communications Hub";
+        } else if (bytes >= 1e18) { // 1 Quintillion
+            targetDisplay.innerText = "Target: The Universe";
+        } else if (bytes >= 500e15) { // 500 Quadrillion
+            targetDisplay.innerText = "Target: Alien Dyson Swarm Control";
+        } else if (bytes >= 100e15) { // 100 Quadrillion
+            targetDisplay.innerText = "Target: Galactic Mainframe";
+        } else if (bytes >= 1e15) { // 1 Quadrillion
+            targetDisplay.innerText = "Target: Alien Technology";
+        } else if (bytes >= 750e12) { // 750 Trillion
+            targetDisplay.innerText = "Target: The Global Consciousness";
+        } else if (bytes >= 500e12) { // 500 Trillion
+            targetDisplay.innerText = "Target: The World";
+        } else if (bytes >= 100e12) { // 100 Trillion
+            targetDisplay.innerText = "Target: Planetary Dyson Matrix";
+        } else if (bytes >= 50e12) { // 50 Trillion
+            targetDisplay.innerText = "Target: The Global Stock Market";
+        } else if (bytes >= 10e12) { // 10 Trillion
+            targetDisplay.innerText = "Target: The Entire Internet";
+        } else if (bytes >= 1e12) { // 1 Trillion
             targetDisplay.innerText = "Target: Global AI Hivemind";
-        } else if (bytes >= 500000000000) { // 500 Billion
+        } else if (bytes >= 750e9) { // 750 Billion
+            targetDisplay.innerText = "Target: Continental Infrastructure";
+        } else if (bytes >= 500e9) { // 500 Billion
             targetDisplay.innerText = "Target: Multiverse Simulation Node";
-        } else if (bytes >= 1000000000) { // 1 Billion
+        } else if (bytes >= 100e9) { // 100 Billion
+            targetDisplay.innerText = "Target: Global Governance Exploit";
+        } else if (bytes >= 50e9) { // 50 Billion
+            targetDisplay.innerText = "Target: Quantum Processing Labs";
+        } else if (bytes >= 10e9) { // 10 Billion
+            targetDisplay.innerText = "Target: Sentient Malware Core";
+        } else if (bytes >= 1e9) { // 1 Billion
             targetDisplay.innerText = "Target: Deep Web Backbone";
-        } else if (bytes >= 500000000) { // 500 Million
+        } else if (bytes >= 750e6) { // 750 Million
+            targetDisplay.innerText = "Target: National Banking Gateway";
+        } else if (bytes >= 500e6) { // 500 Million
             targetDisplay.innerText = "Target: Global Satellite Network";
-        } else if (bytes >= 100000000) { // 100 Million
+        } else if (bytes >= 250e6) { // 250 Million
+            targetDisplay.innerText = "Target: Intelligence Agency Leak";
+        } else if (bytes >= 100e6) { // 100 Million
             targetDisplay.innerText = "Target: Military Defense Grid";
-        } else if (bytes >= 50000000) { // 50 Million
+        } else if (bytes >= 50e6) { // 50 Million
             targetDisplay.innerText = "Target: International Space Station";
-        } else if (bytes >= 10000000) { // 10 Million
+        } else if (bytes >= 25e6) { // 25 Million
+            targetDisplay.innerText = "Target: Global Surveillance Van";
+        } else if (bytes >= 10e6) { // 10 Million
             targetDisplay.innerText = "Target: Central Intelligence Database";
-        } else if (bytes >= 5000000) { // 5 Million
+        } else if (bytes >= 5e6) { // 5 Million
             targetDisplay.innerText = "Target: National Power Grid";
-        } else if (bytes >= 1000000) { // 1 Million
+        } else if (bytes >= 2.5e6) { // 2.5 Million
+            targetDisplay.innerText = "Target: Deepfake Propaganda Engine";
+        } else if (bytes >= 1e6) { // 1 Million
             targetDisplay.innerText = "Target: Secret Government Database";
+        } else if (bytes >= 750000) { // 750k
+            targetDisplay.innerText = "Target: Underground Data Haven";
         } else if (bytes >= 500000) { // 500k
             targetDisplay.innerText = "Target: Offshore Bank Servers";
+        } else if (bytes >= 275000) { // 275k
+            targetDisplay.innerText = "Target: Mirai-Variant Botnet";
+        } else if (bytes >= 150000) { // 150k
+            targetDisplay.innerText = "Target: Silicon Valley Backdoor";
         } else if (bytes >= 100000) { // 100k
             targetDisplay.innerText = "Target: Tech Conglomerate Mainframe";
+        } else if (bytes >= 75000) { // 75k
+            targetDisplay.innerText = "Target: Government Research Lab";
         } else if (bytes >= 50000) { // 50k
             targetDisplay.innerText = "Target: Cryptocurrency Exchange";
         } else if (bytes >= 25000) { // 25k
@@ -515,14 +605,17 @@ function updateUI() {
             targetDisplay.innerText = "Target: Corporate Firewall";
         } else if (bytes >= 5000) { // 5k
             targetDisplay.innerText = "Target: Small Business Internet";
+        } else if (bytes >= 2500) { // 2.5k
+            targetDisplay.innerText = "Target: High-School Grading System";
         } else if (bytes >= 1000) { // 1k
             targetDisplay.innerText = "Target: Local Coffee Shop Router";
         } else if (bytes >= 500) { // 500
             targetDisplay.innerText = "Target: Public Library Terminal";
+        } else if (bytes >= 250) { // 250
+            targetDisplay.innerText = "Target: Smart Doorbell Camera";
         } else if (bytes >= 100) { // 100
             targetDisplay.innerText = "Target: Neighbor's Smart Fridge";
-        } else { 
-            // 0 Bytes (Starting Target)
+        } else {
             targetDisplay.innerText = "Target: Neighbor's Unsecured Wi-Fi";
         }
     }
@@ -933,4 +1026,13 @@ function toggleMute() {
         muteBtn.innerText = "[ MUTE AUDIO ]";
         muteBtn.classList.remove("muted");
     }
+}
+
+function showVersion() {
+    document.getElementById('version-modal').style.display = 'flex';
+    document.getElementById('version-modal').style.setProperty('display', 'flex', 'important');
+}
+
+function hideVersion() {
+    document.getElementById('version-modal').style.display = 'none';
 }
